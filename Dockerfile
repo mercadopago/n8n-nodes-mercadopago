@@ -1,0 +1,1 @@
+FROM hub.furycloud.io/mercadolibre/distroless-node-dev:22-mini
