@@ -45,7 +45,7 @@ Follow these steps to submit a pull request:
 
 ### Development Workflow
 
-1. Clone your fork: `git clone https://github.com/YOUR_USERNAME/n8n-node-mercadopago.git`
+1. Clone your fork: `git clone https://github.com/YOUR_USERNAME/n8n-nodes-mercadopago.git`
 2. Install dependencies: `npm install`
 3. Make your changes
 4. Build the project: `npm run build`
