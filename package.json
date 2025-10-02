@@ -1,0 +1,74 @@
+{
+  "name": "n8n-nodes-mercadopago",
+  "version": "0.1.0",
+  "description": "Community node for Mercado Pago",
+  "keywords": [
+    "n8n-community-node-package",
+    "mercadopago",
+    "n8n"
+  ],
+  "license": "MIT",
+  "homepage": "",
+  "author": "Mercado Pago <developers@mercadopago.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mercadopago/n8n-nodes-mercadopago.git"
+  },
+  "engines": {
+    "node": ">=20.15"
+  },
+  "main": "index.js",
+  "scripts": {
+    "build": "npx rimraf dist && tsc && npx tsx --tsconfig tsconfig.json ./node_modules/gulp/bin/gulp.js -f gulpfile.mjs build:icons",
+    "dev": "tsc --watch",
+    "dist": "npx rimraf dist && tsc -p ./tsconfig.json",
+    "format": "prettier src/nodes src/credentials --write",
+    "lint": "eslint src/nodes src/credentials --no-warn-ignored",
+    "lintfix": "eslint src/nodes src/credentials package.json --fix",
+    "lint:tests": "eslint tests/**/*.ts",
+    "lint:all": "eslint .",
+    "prepublishOnly": "npm run build && npm run lint:all",
+    "test": "vitest",
+    "test:unit": "vitest run",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest run --coverage"
+  },
+  "files": [
+    "dist"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/MercadoPagoApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/MercadoPago/MercadoPago.node.js"
+    ]
+  },
+  "devDependencies": {
+    "@esbuild-kit/cjs-loader": "^2.4.4",
+    "@eslint/js": "^9.35.0",
+    "@types/node": "^24.5.1",
+    "@typescript-eslint/eslint-plugin": "8.39.1",
+    "@typescript-eslint/parser": "8.39.1",
+    "@vitest/coverage-v8": "^3.2.4",
+    "eslint": "^9.34.0",
+    "eslint-plugin-n8n-nodes-base": "1.16.3",
+    "globals": "^16.4.0",
+    "gulp": "5.0.1",
+    "jiti": "^2.5.1",
+    "prettier": "3.6.2",
+    "rimraf": "6.0.1",
+    "tsx": "^4.20.5",
+    "typescript": "5.9.2",
+    "typescript-eslint": "^8.44.0",
+    "vitest": "^3.2.4"
+  },
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  },
+  "dependencies": {
+    "@types/request": "^2.48.8",
+    "request": "^2.88.2"
+  }
+}

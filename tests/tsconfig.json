@@ -1,0 +1,19 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["vitest", "node"],
+    "moduleResolution": "Node",
+    "rootDir": "..",
+    "baseUrl": "..",
+    "paths": {
+      "../helpers/*": ["tests/helpers/*"]
+    }
+  },
+  "include": [
+    "./**/*.ts",
+    "./**/*.d.ts",
+    "../src/**/*.ts"
+  ],
+  "exclude": ["../dist", "../node_modules"]
+}
