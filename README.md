@@ -1,4 +1,10 @@
-# fury_n8n-node-mercadopago
+# n8n-nodes-mercadopago
+
+[![npm version](https://img.shields.io/npm/v/@mercadopago/n8n-nodes-mercadopago.svg)](https://www.npmjs.com/package/@mercadopago/n8n-nodes-mercadopago)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D20.15-brightgreen)](https://nodejs.org)
+[![Test Coverage](https://img.shields.io/badge/coverage-check%20reports-blue)](./coverage)
+
 An n8n community node to integrate Mercado Pago APIs. It focuses on two main resource groups: Payment Operations and Reporting (Release/Settlement reports). The node provides a clean UI and typed handlers for each operation, following n8n best practices.
 
 ## Contributing

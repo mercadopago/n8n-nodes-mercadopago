@@ -8,11 +8,14 @@
     "n8n"
   ],
   "license": "MIT",
-  "homepage": "",
+  "homepage": "https://github.com/mercadopago/n8n-nodes-mercadopago/blob/master/README.md",
   "author": "Mercado Pago <developers@mercadopago.com>",
   "repository": {
     "type": "git",
     "url": "https://github.com/mercadopago/n8n-nodes-mercadopago.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mercadopago/n8n-nodes-mercadopago/issues"
   },
   "publishConfig": {
     "access": "public"
