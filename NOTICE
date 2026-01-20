@@ -1,0 +1,45 @@
+n8n-nodes-mercadopago
+
+This product bundles third-party components licensed under the Apache License, Version 2.0 (Apache-2.0).
+
+Dependencies and attributions:
+
+- request 2.88.2 (https://github.com/request/request)
+  Copyright (c) 2010-2020 Mikeal Rogers and contributors
+  License: Apache-2.0
+  Note: This library has been deprecated. See https://github.com/request/request/issues/3142
+
+- @types/request 2.48.13 (https://github.com/DefinitelyTyped/DefinitelyTyped)
+  Copyright (c) Microsoft Corporation
+  License: MIT
+
+Apache-2.0 licensed components (as recorded in package-lock.json at the time this NOTICE was generated):
+
+- @ampproject/remapping
+- @eslint/config-array
+- @eslint/config-helpers
+- @eslint/core
+- @eslint/object-schema
+- @eslint/plugin-kit
+- @humanfs/core
+- @humanfs/node
+- @humanwhocodes/config-array
+- @humanwhocodes/module-importer
+- @humanwhocodes/retry
+- @n8n/tournament
+- aws-sign2
+- b4a
+- bare-events
+- caseless
+- doctrine
+- eslint-visitor-keys
+- expect-type
+- forever-agent
+- jmespath
+- oauth-sign
+- request
+- text-decoder
+- tunnel-agent
+- typescript
+
+All trademarks and copyrights are the property of their respective owners.
