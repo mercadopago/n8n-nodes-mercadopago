@@ -30,8 +30,8 @@ class MercadoPago {
             defaults: {
                 name: 'MercadoPago',
             },
-            inputs: ["main" /* NodeConnectionType.Main */],
-            outputs: ["main" /* NodeConnectionType.Main */],
+            inputs: ['main'],
+            outputs: ['main'],
             credentials: [
                 {
                     name: 'mercadoPagoApi',

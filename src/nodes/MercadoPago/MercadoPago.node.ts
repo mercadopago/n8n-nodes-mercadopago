@@ -4,7 +4,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeConnectionType,
+	type NodeConnectionType,
 	IRequestOptions,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -37,8 +37,8 @@ export class MercadoPago implements INodeType {
 		defaults: {
 			name: 'MercadoPago',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'] as NodeConnectionType[],
+		outputs: ['main'] as NodeConnectionType[],
 		credentials: [
 			{
 				name: 'mercadoPagoApi',
