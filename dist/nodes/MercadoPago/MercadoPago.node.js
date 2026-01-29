@@ -513,42 +513,72 @@ class MercadoPago {
     async execute() {
         const items = this.getInputData();
         const returnData = [];
-        const op = this.getNodeParameter('operation', 0);
+        const opRaw = this.getNodeParameter('operation', 0);
+        const op = (0, operations_1.isOperationName)(opRaw) ? opRaw : undefined;
         // Carga credenciales una vez
-        const credentials = await this.getCredentials('mercadoPagoApi');
+        const credentials = (await this.getCredentials('mercadoPagoApi'));
+        const makeRequest = async (init) => {
+            const DEFAULT_TIMEOUT_MS = 60000;
+            const MAX_RETRIES_429 = 2;
+            const isJson = init.json !== undefined ? init.json : true;
+            const options = {
+                method: init.method,
+                url: init.url,
+                qs: init.qs,
+                body: init.body,
+                form: init.form,
+                json: isJson,
+                timeout: (init.timeoutMs ?? DEFAULT_TIMEOUT_MS),
+                headers: {
+                    ...(isJson ? { 'Content-Type': 'application/json' } : {}),
+                    Authorization: `Bearer ${credentials.accessToken}`,
+                    'X-Platform-Id': constants_1.HTTP_HEADERS.X_PLATFORM_ID,
+                    ...(init.headers ?? {}),
+                },
+            };
+            const sleep = async (ms) => await new Promise((resolve) => setTimeout(resolve, ms));
+            let attempt = 0;
+            while (true) {
+                try {
+                    return (await this.helpers.request(options));
+                }
+                catch (error) {
+                    const err = error;
+                    const status = err?.statusCode ?? err?.response?.status;
+                    if (status !== 429 || attempt >= MAX_RETRIES_429) {
+                        throw error;
+                    }
+                    attempt++;
+                    const retryAfterRaw = err?.response?.headers?.['retry-after'] ?? err?.headers?.['retry-after'];
+                    const retryAfterSeconds = typeof retryAfterRaw === 'string' ? Number(retryAfterRaw) : NaN;
+                    const waitMs = Number.isFinite(retryAfterSeconds)
+                        ? Math.max(0, retryAfterSeconds * 1000)
+                        : 1000 * attempt;
+                    await sleep(waitMs);
+                }
+            }
+        };
+        const makeCtx = (i) => ({
+            i,
+            get: (name, def) => this.getNodeParameter(name, i, def),
+            credentials,
+            helpers: this.helpers,
+            nodeError: (msg) => {
+                throw new n8n_workflow_1.NodeOperationError(this.getNode(), msg, { itemIndex: i });
+            },
+            request: makeRequest,
+        });
         for (let i = 0; i < items.length; i++) {
             try {
+                if (!op) {
+                    throw new n8n_workflow_1.NodeOperationError(this.getNode(), `Unsupported operation: ${opRaw}`, { itemIndex: i });
+                }
                 const handler = operations_1.operations[op];
                 if (!handler) {
                     throw new n8n_workflow_1.NodeOperationError(this.getNode(), `Unsupported operation: ${op}`, { itemIndex: i });
                 }
                 // Usa exactamente la misma firma que HandlerCtx para evitar incompatibilidades de tipos
-                const ctx = {
-                    i,
-                    get: (name, def) => this.getNodeParameter(name, i, def),
-                    credentials: credentials,
-                    helpers: this.helpers,
-                    nodeError: (msg) => {
-                        throw new n8n_workflow_1.NodeOperationError(this.getNode(), msg, { itemIndex: i });
-                    },
-                    request: async (init) => {
-                        const isJson = init.json !== undefined ? init.json : true;
-                        const options = {
-                            method: init.method,
-                            url: init.url,
-                            qs: init.qs,
-                            body: init.body,
-                            json: isJson,
-                            headers: {
-                                ...(isJson ? { 'Content-Type': 'application/json' } : {}),
-                                Authorization: `Bearer ${credentials.accessToken}`,
-                                'X-Platform-Id': constants_1.HTTP_HEADERS.X_PLATFORM_ID,
-                                ...(init.headers ?? {}),
-                            },
-                        };
-                        return this.helpers.request(options);
-                    },
-                };
+                const ctx = makeCtx(i);
                 const res = await handler(ctx);
                 const execData = this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(Array.isArray(res) ? res : [res]), { itemData: { item: i } });
                 returnData.push(...execData);

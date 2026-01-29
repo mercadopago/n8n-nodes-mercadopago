@@ -14,7 +14,7 @@ import type { OperationHandler } from './index';
  *
  * Optional inputs:
  * - `sftp_info`: connection data; empty values are pruned.
- * - `configAdditionalFields`: separator, display timezone, translation, email
+ * - `settlementAdditionalFields`: separator, display timezone, translation, email
  *   notifications, and `scheduled` flag which defaults to false when missing.
  */
 declare const handler: OperationHandler;
