@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.operations = void 0;
+exports.isOperationName = exports.operations = void 0;
 const createPaymentLink_1 = __importDefault(require("./createPaymentLink"));
 const listReleaseReports_1 = __importDefault(require("./listReleaseReports"));
 const configureReleaseReport_1 = __importDefault(require("./configureReleaseReport"));
@@ -32,4 +32,6 @@ exports.operations = {
     configureSettlementReport: configureSettlementReport_1.default,
     editSettlementReport: editSettlementReport_1.default,
 };
+const isOperationName = (op) => op in exports.operations;
+exports.isOperationName = isOperationName;
 //# sourceMappingURL=index.js.map

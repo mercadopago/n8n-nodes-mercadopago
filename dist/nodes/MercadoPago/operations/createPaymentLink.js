@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const constants_1 = require("../../../constants");
 /**
  * Create Checkout Preference (payment link).
  *
@@ -29,7 +30,7 @@ const isoTZRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?(?:Z|[+-]\d{
 const handler = async (ctx) => {
     // Items
     const itemsCollection = ctx.get('items');
-    const itemsArr = (itemsCollection?.itemsValues ?? []);
+    const itemsArr = itemsCollection?.itemsValues ?? [];
     // Additional fields
     const additionalFields = ctx.get('additionalFields', {});
     // External reference
@@ -98,14 +99,14 @@ const handler = async (ctx) => {
     // Body
     const body = {
         items: itemsArr.map((item) => ({
-            id: item.id || '',
-            title: item.title,
-            description: item.description || '',
-            picture_url: item.picture_url || '',
-            category_id: item.category_id || '',
-            quantity: item.quantity,
-            currency_id: item.currency_id,
-            unit_price: item.unit_price,
+            id: (item.id ?? '').toString(),
+            title: (item.title ?? '').toString(),
+            description: (item.description ?? '').toString(),
+            picture_url: (item.picture_url ?? '').toString(),
+            category_id: (item.category_id ?? '').toString(),
+            quantity: Number(item.quantity) || 0,
+            currency_id: (item.currency_id ?? '').toString(),
+            unit_price: Number(item.unit_price) || 0,
         })),
     };
     if (additionalFields.external_reference)
@@ -141,7 +142,7 @@ const handler = async (ctx) => {
     // Request
     const response = await ctx.request({
         method: 'POST',
-        url: 'https://api.mercadopago.com/checkout/preferences',
+        url: constants_1.API_ENDPOINTS.CHECKOUT_PREFERENCES,
         body,
     });
     return response;
