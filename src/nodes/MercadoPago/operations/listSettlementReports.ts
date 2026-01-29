@@ -1,4 +1,11 @@
 import type { OperationHandler } from './index';
+import { API_ENDPOINTS } from '../../../constants';
+import { extractResults, MAX_ITEMS_RETURN_ALL } from './utils';
+
+type ListQuery = {
+	offset: number;
+	limit: number;
+};
 
 /**
  * List Settlement Reports.
@@ -18,29 +25,29 @@ const handler: OperationHandler = async (ctx) => {
 	const pageSize = Math.min(Math.max(filters?.apiLimit ?? 200, 1), 1000);
 	let offset = Math.max(filters?.offset ?? 0, 0);
 
-	const baseRequest = (qs: Record<string, any>) =>
-		ctx.request({
+	const baseRequest = (qs: ListQuery) =>
+		ctx.request<unknown>({
 			method: 'GET',
-			url: 'https://api.mercadopago.com/v1/account/settlement_report/list',
+			url: API_ENDPOINTS.SETTLEMENT_REPORT_LIST,
 			qs,
 		});
 
 	if (returnAll) {
-		const out: any[] = [];
+		const out: unknown[] = [];
 		while (true) {
 			const res = await baseRequest({ offset, limit: pageSize });
-			const batch = Array.isArray(res) ? res : (Array.isArray(res?.results) ? res.results : []);
+			const batch = extractResults(res);
 			out.push(...batch);
 			if (!batch.length || batch.length < pageSize) break;
 			offset += pageSize;
-			if (out.length > 100000) break; // guard rail
+			if (out.length > MAX_ITEMS_RETURN_ALL) break; // guard rail
 		}
 		return out;
 	}
 
 	// returnAll = false → una sola página y recorte
 	const res = await baseRequest({ offset, limit: Math.min(pageSize, limit) });
-	const batch = Array.isArray(res) ? res : (Array.isArray(res?.results) ? res.results : []);
+	const batch = extractResults(res);
 	return batch.slice(0, limit);
 };
 
