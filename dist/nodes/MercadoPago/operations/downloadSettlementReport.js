@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const constants_1 = require("../../../constants");
 /**
  * Download Settlement Report (CSV).
  *
@@ -12,7 +13,7 @@ const handler = async (ctx) => {
     const fileName = (ctx.get('file_name', '') || '').toString().trim();
     if (!fileName)
         ctx.nodeError('Parameter "File Name" is required.');
-    const url = `https://api.mercadopago.com/v1/account/settlement_report/${encodeURIComponent(fileName)}`;
+    const url = constants_1.API_ENDPOINTS.SETTLEMENT_REPORT_DOWNLOAD(fileName);
     // Request CSV as plain text
     const response = await ctx.request({
         method: 'GET',
