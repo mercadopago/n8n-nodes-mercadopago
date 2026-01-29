@@ -23,6 +23,9 @@ class MercadoPagoApi {
                 displayName: 'Access Token',
                 name: 'accessToken',
                 type: 'string',
+                typeOptions: {
+                    password: true,
+                },
                 default: '',
                 required: true,
                 description: 'The MercadoPago access token',

@@ -1,15 +1,18 @@
 export type RequestInit = {
-  method: string;
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   url: string;
   qs?: Record<string, any>;
   body?: any;
+  form?: any;
   headers?: Record<string, string>;
   json?: boolean;
+  timeoutMs?: number;
 };
 
 export type MockCtxOptions = {
   params?: Record<string, any>;
   requestImpl?: (init: RequestInit) => any | Promise<any>;
+  credentials?: { accessToken: string };
 };
 
 /**
@@ -32,11 +35,11 @@ export function makeMockCtx(options: MockCtxOptions = {}) {
         : defaultValue;
     },
 
-    async request(init: RequestInit) {
+    async request<TResponse = any>(init: RequestInit): Promise<TResponse> {
       state.lastRequest = init;
       (ctx as any).lastRequest = init;
       if (options.requestImpl) return await options.requestImpl(init);
-      return {};
+      return {} as TResponse;
     },
 
     nodeError(message: string): never {
@@ -45,6 +48,8 @@ export function makeMockCtx(options: MockCtxOptions = {}) {
 
     // Exposed for assertions in tests
     lastRequest: state.lastRequest as RequestInit | undefined,
+
+    credentials: options.credentials ?? { accessToken: 'test-access-token' },
   } as const;
 
   return ctx;

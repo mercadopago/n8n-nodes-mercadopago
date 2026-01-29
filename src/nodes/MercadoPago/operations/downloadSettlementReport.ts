@@ -1,4 +1,5 @@
 import type { OperationHandler } from './index';
+import { API_ENDPOINTS } from '../../../constants';
 
 /**
  * Download Settlement Report (CSV).
@@ -12,7 +13,7 @@ const handler: OperationHandler = async (ctx) => {
 	const fileName = (ctx.get<string>('file_name', '') || '').toString().trim();
 	if (!fileName) ctx.nodeError('Parameter "File Name" is required.');
 
-	const url = `https://api.mercadopago.com/v1/account/settlement_report/${encodeURIComponent(fileName)}`;
+	const url = API_ENDPOINTS.SETTLEMENT_REPORT_DOWNLOAD(fileName);
 
 	// Request CSV as plain text
 	const response = await ctx.request({

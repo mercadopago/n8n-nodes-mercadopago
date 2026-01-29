@@ -10,7 +10,20 @@ declare module 'n8n-workflow' {
     headers?: Record<string, string>;
   }
 
+  export interface INodeExecutionData {
+    json: Record<string, unknown>;
+    binary?: Record<string, unknown>;
+  }
+
   export interface IExecuteFunctions {
     helpers: any;
+    getInputData(): INodeExecutionData[];
+    getNodeParameter(name: string, itemIndex: number, fallback?: unknown): unknown;
+    getCredentials(name: string): Promise<Record<string, unknown>>;
+    getNode(): { name: string };
+  }
+
+  export class NodeOperationError extends Error {
+    constructor(node: { name: string }, message: string, options?: { itemIndex?: number });
   }
 }
