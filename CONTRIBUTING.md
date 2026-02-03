@@ -30,18 +30,28 @@ Feature suggestions are welcome! Please create an issue with:
 
 ### Pull Requests
 
-All pull requests to the main branch must be reviewed and approved by the project creator, Samuel Heredia, before being merged.
+All pull requests must be reviewed and approved by the code owners before being merged.
+
+#### Branching model
+
+We follow a simple GitFlow-like workflow:
+
+1. Create feature branches from `develop` (e.g. `feature/my-change`, `fix/bug-123`)
+2. Open PRs from your feature branch into `develop`
+3. To release stable changes, open a PR from `develop` into `master`
+
+Direct merges/pushes to `develop` or `master` should be avoided.
 
 Follow these steps to submit a pull request:
 
 1. Fork the repository
-2. Create a new branch from `main`
+2. Create a new branch from `develop`
 3. Make your changes
 4. Write or update tests for the changes
 5. Ensure all tests pass with `npm run test`
 6. Commit your changes following conventional commit guidelines
 7. Push to your fork
-8. Submit a pull request to the `main` branch
+8. Submit a pull request to the `develop` branch
 
 ### Development Workflow
 
@@ -73,7 +83,7 @@ Follow these steps to submit a pull request:
 
 ## Review Process
 
-1. All PRs will be reviewed by the project maintainer (Samuel Heredia)
+1. All PRs will be reviewed by the code owners
 2. Feedback must be addressed before a PR can be merged
 3. Once approved, the PR will be merged by the maintainer
 

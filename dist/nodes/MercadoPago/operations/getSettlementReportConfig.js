@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const constants_1 = require("../../../constants");
 /**
  * Get Settlement Report Configuration.
  *
@@ -9,7 +10,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const handler = async (ctx) => {
     const response = await ctx.request({
         method: 'GET',
-        url: 'https://api.mercadopago.com/v1/account/settlement_report/config',
+        url: constants_1.API_ENDPOINTS.SETTLEMENT_REPORT_CONFIG,
     });
     return response;
 };
