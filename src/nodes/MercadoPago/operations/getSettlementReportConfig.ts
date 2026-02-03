@@ -1,4 +1,5 @@
 import type { OperationHandler } from './index';
+import { API_ENDPOINTS } from '../../../constants';
 
 /**
  * Get Settlement Report Configuration.
@@ -9,7 +10,7 @@ import type { OperationHandler } from './index';
 const handler: OperationHandler = async (ctx) => {
 	const response = await ctx.request({
 		method: 'GET',
-		url: 'https://api.mercadopago.com/v1/account/settlement_report/config',
+		url: API_ENDPOINTS.SETTLEMENT_REPORT_CONFIG,
 	});
 	return response;
 };

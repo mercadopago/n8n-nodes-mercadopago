@@ -1,5 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const constants_1 = require("../../../constants");
+const utils_1 = require("./utils");
 /**
  * List Settlement Reports.
  *
@@ -19,26 +21,26 @@ const handler = async (ctx) => {
     let offset = Math.max(filters?.offset ?? 0, 0);
     const baseRequest = (qs) => ctx.request({
         method: 'GET',
-        url: 'https://api.mercadopago.com/v1/account/settlement_report/list',
+        url: constants_1.API_ENDPOINTS.SETTLEMENT_REPORT_LIST,
         qs,
     });
     if (returnAll) {
         const out = [];
         while (true) {
             const res = await baseRequest({ offset, limit: pageSize });
-            const batch = Array.isArray(res) ? res : (Array.isArray(res?.results) ? res.results : []);
+            const batch = (0, utils_1.extractResults)(res);
             out.push(...batch);
             if (!batch.length || batch.length < pageSize)
                 break;
             offset += pageSize;
-            if (out.length > 100000)
+            if (out.length > utils_1.MAX_ITEMS_RETURN_ALL)
                 break; // guard rail
         }
         return out;
     }
     // returnAll = false → una sola página y recorte
     const res = await baseRequest({ offset, limit: Math.min(pageSize, limit) });
-    const batch = Array.isArray(res) ? res : (Array.isArray(res?.results) ? res.results : []);
+    const batch = (0, utils_1.extractResults)(res);
     return batch.slice(0, limit);
 };
 exports.default = handler;
