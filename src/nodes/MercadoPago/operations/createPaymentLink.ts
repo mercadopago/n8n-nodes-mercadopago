@@ -1,4 +1,61 @@
 import type { OperationHandler } from './index';
+import { API_ENDPOINTS } from '../../../constants';
+
+type ItemValue = {
+	id?: string;
+	title?: string;
+	description?: string;
+	picture_url?: string;
+	category_id?: string;
+	quantity?: number;
+	currency_id?: string;
+	unit_price?: number;
+};
+
+type ItemsParam = {
+	itemsValues?: ItemValue[];
+};
+
+type BackUrlsValues = {
+	success?: string;
+	pending?: string;
+	failure?: string;
+};
+
+type PaymentLinkAdditionalFields = {
+	external_reference?: string;
+	notification_url?: string;
+	auto_return?: string;
+	back_urls?: { backUrlsValues: BackUrlsValues };
+	binary_mode?: boolean;
+	statement_descriptor?: string;
+	expiration_date_from?: string;
+	expiration_date_to?: string;
+};
+
+type PreferenceItem = {
+	id: string;
+	title: string;
+	description: string;
+	picture_url: string;
+	category_id: string;
+	quantity: number;
+	currency_id: string;
+	unit_price: number;
+};
+
+type CreatePreferenceBody = {
+	items: PreferenceItem[];
+	external_reference?: string;
+	notification_url?: string;
+	binary_mode?: boolean;
+	statement_descriptor?: string;
+	expires?: boolean;
+	expiration_date_from?: string;
+	expiration_date_to?: string;
+	auto_return?: string;
+	back_urls?: BackUrlsValues;
+};
 
 /**
  * Create Checkout Preference (payment link).
@@ -29,20 +86,11 @@ const isoTZRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?(?:Z|[+-]\d{
 
 const handler: OperationHandler = async (ctx) => {
 	// Items
-	const itemsCollection = ctx.get('items') as { itemsValues: Array<Record<string, any>> };
-	const itemsArr = (itemsCollection?.itemsValues ?? []) as Array<Record<string, any>>;
+	const itemsCollection = ctx.get<ItemsParam>('items');
+	const itemsArr = itemsCollection?.itemsValues ?? [];
 
 	// Additional fields
-	const additionalFields = ctx.get('additionalFields', {}) as {
-		external_reference?: string;
-		notification_url?: string;
-		auto_return?: string;
-		back_urls?: { backUrlsValues: { success?: string; pending?: string; failure?: string } };
-		binary_mode?: boolean;
-		statement_descriptor?: string;
-		expiration_date_from?: string;
-		expiration_date_to?: string;
-	};
+	const additionalFields = ctx.get<PaymentLinkAdditionalFields>('additionalFields', {});
 
 	// External reference
 	if (additionalFields.external_reference) {
@@ -113,16 +161,16 @@ const handler: OperationHandler = async (ctx) => {
 	}
 
 	// Body
-	const body: Record<string, any> = {
+	const body: CreatePreferenceBody = {
 		items: itemsArr.map((item) => ({
-			id: item.id || '',
-			title: item.title,
-			description: item.description || '',
-			picture_url: item.picture_url || '',
-			category_id: item.category_id || '',
-			quantity: item.quantity,
-			currency_id: item.currency_id,
-			unit_price: item.unit_price,
+			id: (item.id ?? '').toString(),
+			title: (item.title ?? '').toString(),
+			description: (item.description ?? '').toString(),
+			picture_url: (item.picture_url ?? '').toString(),
+			category_id: (item.category_id ?? '').toString(),
+			quantity: Number(item.quantity) || 0,
+			currency_id: (item.currency_id ?? '').toString(),
+			unit_price: Number(item.unit_price) || 0,
 		})),
 	};
 
@@ -150,7 +198,7 @@ const handler: OperationHandler = async (ctx) => {
 	// Request
 	const response = await ctx.request({
 		method: 'POST',
-		url: 'https://api.mercadopago.com/checkout/preferences',
+		url: API_ENDPOINTS.CHECKOUT_PREFERENCES,
 		body,
 	});
 

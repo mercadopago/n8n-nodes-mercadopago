@@ -4,14 +4,14 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeConnectionType,
+	type NodeConnectionType,
 	IRequestOptions,
 	NodeOperationError,
 } from 'n8n-workflow';
 
 import { HTTP_HEADERS } from '../../constants';
 
-import { operations, type HandlerCtx } from './operations';
+import { operations, isOperationName, type HandlerCtx, type MercadoPagoCredentials, type OperationName, type RequestInit } from './operations';
 
 /**
  * n8n node: MercadoPago
@@ -37,8 +37,8 @@ export class MercadoPago implements INodeType {
 		defaults: {
 			name: 'MercadoPago',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'] as NodeConnectionType[],
+		outputs: ['main'] as NodeConnectionType[],
 		credentials: [
 			{
 				name: 'mercadoPagoApi',
@@ -525,46 +525,78 @@ export class MercadoPago implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
-		const op = this.getNodeParameter('operation', 0) as string;
+		const opRaw = this.getNodeParameter('operation', 0) as string;
+		const op: OperationName | undefined = isOperationName(opRaw) ? opRaw : undefined;
 
 		// Carga credenciales una vez
-		const credentials = await this.getCredentials('mercadoPagoApi');
+		const credentials = (await this.getCredentials('mercadoPagoApi')) as MercadoPagoCredentials;
+
+		const makeRequest = async <TResponse = unknown>(init: RequestInit): Promise<TResponse> => {
+			const DEFAULT_TIMEOUT_MS = 60_000;
+			const MAX_RETRIES_429 = 2;
+			const isJson = init.json !== undefined ? init.json : true;
+			const options: IRequestOptions = {
+				method: init.method as IRequestOptions['method'],
+				url: init.url,
+				qs: init.qs as unknown as IRequestOptions['qs'],
+				body: init.body as unknown as IRequestOptions['body'],
+				form: init.form as unknown as IRequestOptions['form'],
+				json: isJson,
+				timeout: (init.timeoutMs ?? DEFAULT_TIMEOUT_MS) as unknown as IRequestOptions['timeout'],
+				headers: {
+					...(isJson ? { 'Content-Type': 'application/json' } : {}),
+					Authorization: `Bearer ${credentials.accessToken}`,
+					'X-Platform-Id': HTTP_HEADERS.X_PLATFORM_ID,
+					...(init.headers ?? {}),
+				},
+			};
+
+			const sleep = async (ms: number) => await new Promise((resolve) => setTimeout(resolve, ms));
+
+			let attempt = 0;
+			while (true) {
+				try {
+					return (await this.helpers.request(options)) as TResponse;
+				} catch (error) {
+					const err = error as { statusCode?: number; response?: { status?: number; headers?: Record<string, string> }; headers?: Record<string, string> };
+					const status = err?.statusCode ?? err?.response?.status;
+					if (status !== 429 || attempt >= MAX_RETRIES_429) {
+						throw error;
+					}
+					attempt++;
+					const retryAfterRaw = err?.response?.headers?.['retry-after'] ?? err?.headers?.['retry-after'];
+					const retryAfterSeconds = typeof retryAfterRaw === 'string' ? Number(retryAfterRaw) : NaN;
+					const waitMs = Number.isFinite(retryAfterSeconds)
+						? Math.max(0, retryAfterSeconds * 1000)
+						: 1000 * attempt;
+					await sleep(waitMs);
+				}
+			}
+		};
+
+		const makeCtx = (i: number): HandlerCtx => ({
+			i,
+			get: <T = unknown>(name: string, def?: T) => this.getNodeParameter(name, i, def) as T,
+			credentials,
+			helpers: this.helpers,
+			nodeError: (msg: string) => {
+				throw new NodeOperationError(this.getNode(), msg, { itemIndex: i });
+			},
+			request: makeRequest,
+		});
 
 		for (let i = 0; i < items.length; i++) {
 			try {
+				if (!op) {
+					throw new NodeOperationError(this.getNode(), `Unsupported operation: ${opRaw}`, { itemIndex: i });
+				}
 				const handler = operations[op];
 				if (!handler) {
 					throw new NodeOperationError(this.getNode(), `Unsupported operation: ${op}`, { itemIndex: i });
 				}
 
 				// Usa exactamente la misma firma que HandlerCtx para evitar incompatibilidades de tipos
-				const ctx: HandlerCtx = {
-					i,
-					get: <T = unknown>(name: string, def?: T) =>
-						this.getNodeParameter(name, i, def as any) as T,
-					credentials: credentials as any,
-					helpers: this.helpers,
-					nodeError: (msg: string) => {
-						throw new NodeOperationError(this.getNode(), msg, { itemIndex: i });
-					},
-						request: async (init) => {
-							const isJson = (init as any).json !== undefined ? (init as any).json : true;
-							const options: IRequestOptions = {
-								method: init.method,
-								url: init.url,
-								qs: init.qs,
-								body: init.body,
-								json: isJson,
-								headers: {
-									...(isJson ? { 'Content-Type': 'application/json' } : {}),
-									Authorization: `Bearer ${credentials.accessToken}`,
-									'X-Platform-Id': HTTP_HEADERS.X_PLATFORM_ID,
-									...(init.headers ?? {}),
-								},
-							};
-							return this.helpers.request(options);
-						},
-				};
+				const ctx = makeCtx(i);
 
 				const res = await handler(ctx);
 

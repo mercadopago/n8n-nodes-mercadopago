@@ -1,4 +1,3 @@
-import type { IRequestOptions } from 'n8n-workflow';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import createPaymentLink from './createPaymentLink';
 import listReleaseReports from './listReleaseReports';
@@ -21,11 +20,27 @@ import editSettlementReport from './editSettlementReport';
  * - `nodeError(msg)`: throw an n8n `NodeOperationError` with item context.
  * - `helpers`: a reference to `IExecuteFunctions['helpers']`.
  */
+
+export type MercadoPagoCredentials = {
+	accessToken: string;
+};
+
+export type RequestInit = {
+	method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+	url: string;
+	qs?: Record<string, string | number | boolean | undefined>;
+	body?: Record<string, unknown> | unknown[] | string;
+	form?: Record<string, unknown>;
+	headers?: Record<string, string>;
+	json?: boolean;
+	timeoutMs?: number;
+};
+
 export type HandlerCtx = {
 	i: number;
 	get: <T = unknown>(name: string, def?: T) => T;
-	request: (init: Omit<IRequestOptions, 'headers'> & { headers?: Record<string, string> }) => Promise<any>;
-	credentials: { accessToken: string };
+	request: <TResponse = unknown>(init: RequestInit) => Promise<TResponse>;
+	credentials: MercadoPagoCredentials;
 	nodeError: (msg: string) => never;
 	helpers: IExecuteFunctions['helpers'];
 };
@@ -35,21 +50,25 @@ export type HandlerCtx = {
  * that receives a `HandlerCtx` and returns any serializable value to be output
  * as node data.
  */
-export type OperationHandler = (ctx: HandlerCtx) => Promise<any>;
+export type OperationHandler = (ctx: HandlerCtx) => Promise<unknown>;
 /**
  * Registry mapping operation keys (selected in the node UI) to their concrete
  * handler implementation.
  */
-export const operations: Record<string, OperationHandler> = {
-    createPaymentLink,
-    listReleaseReports,
-    configureReleaseReport,
-    editReleaseReportConfig,
-    getReleaseReportConfig,
-    downloadReleaseReport,
-    listSettlementReports,
-    downloadSettlementReport,
-    getSettlementReportConfig,
-    configureSettlementReport,
-    editSettlementReport,
-};
+export const operations = {
+	createPaymentLink,
+	listReleaseReports,
+	configureReleaseReport,
+	editReleaseReportConfig,
+	getReleaseReportConfig,
+	downloadReleaseReport,
+	listSettlementReports,
+	downloadSettlementReport,
+	getSettlementReportConfig,
+	configureSettlementReport,
+	editSettlementReport,
+} satisfies Record<string, OperationHandler>;
+
+export type OperationName = keyof typeof operations;
+
+export const isOperationName = (op: string): op is OperationName => op in operations;
