@@ -76,6 +76,7 @@
   "dependencies": {},
   "overrides": {
     "esbuild": "^0.25.0",
+    "@isaacs/brace-expansion": ">=5.0.1",
     "form-data": ">=4.0.4",
     "js-yaml": "^4.1.1",
     "lodash": "^4.17.23",
