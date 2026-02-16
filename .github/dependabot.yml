@@ -45,14 +45,20 @@ updates:
       prefix-development: "⬆️"
       include: "scope"
 
-    # 🔐 Agrupar actualizaciones de seguridad
-    # Razón: Facilita revisar múltiples fixes de seguridad juntos
+    # 🔐 Actualizaciones de Seguridad
+    # Razón: Dependabot prioriza automáticamente las actualizaciones de seguridad
+    # No requiere configuración adicional en 'groups'
+    # Las actualizaciones de seguridad se crean como PRs separados con alta prioridad
+
+    # 📦 Agrupar actualizaciones por tipo (opcional)
+    # Razón: Agrupa actualizaciones menores/parches para facilitar revisión
     groups:
-      security-updates:
-        patterns:
-          - "*"
+      # Agrupar todas las actualizaciones de parches de dev dependencies
+      dev-dependencies-patches:
+        dependency-type: "development"
         update-types:
-          - "security"
+          - "patch"
+          - "minor"
 
     # ⚙️ Permitir actualizaciones indirectas
     # Razón: Actualiza dependencias transitivas vulnerables
