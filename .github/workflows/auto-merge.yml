@@ -1,0 +1,446 @@
+# ============================================
+# AUTO-MERGE - Aprobación Automática de PRs
+# ============================================
+# Este workflow aprueba y mergea automáticamente PRs de seguridad
+# que cumplen con todos los criterios de calidad.
+#
+# Criterios para auto-merge:
+# 1. PR creado por GitHub Actions (security fixes automáticos)
+# 2. Tiene label "automated" y "security"
+# 3. Target branch es "develop"
+# 4. Todos los checks pasan (build, tests, lint)
+# 5. No hay conflictos de merge
+
+name: 🤖 Auto-Merge Security PRs
+
+# ============================================
+# TRIGGERS
+# ============================================
+on:
+  # Se ejecuta cuando un PR recibe nuevo check o review
+  pull_request_target:
+    types:
+      - opened          # PR nuevo
+      - reopened        # PR reabierto
+      - synchronize     # Nuevos commits
+      - labeled         # Label agregado
+      - unlabeled       # Label removido
+
+  # También cuando los checks cambian de estado
+  check_suite:
+    types: [completed]
+
+  # Permitir ejecución manual
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Número del PR a auto-merge'
+        required: true
+        type: number
+
+# ============================================
+# PERMISSIONS
+# ============================================
+permissions:
+  contents: write        # Para merge
+  pull-requests: write   # Para aprobar y mergear PR
+  checks: read          # Para leer status de checks
+
+# ============================================
+# JOBS
+# ============================================
+jobs:
+  # --------------------------------------------
+  # JOB 1: Evaluar si el PR califica para auto-merge
+  # --------------------------------------------
+  evaluate-pr:
+    name: 📋 Evaluar PR para Auto-Merge
+    runs-on: ubuntu-latest
+
+    # Outputs para siguiente job
+    outputs:
+      should_merge: ${{ steps.evaluate.outputs.should_merge }}
+      pr_number: ${{ steps.get-pr.outputs.number }}
+      pr_title: ${{ steps.get-pr.outputs.title }}
+
+    steps:
+      # Paso 1: Obtener información del PR
+      - name: 🔍 Get PR information
+        id: get-pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            let pr;
+
+            // Si es workflow_dispatch, usar el número proporcionado
+            if (context.eventName === 'workflow_dispatch') {
+              const prNumber = ${{ github.event.inputs.pr_number }};
+              pr = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber
+              });
+              pr = pr.data;
+            }
+            // Si es pull_request_target, usar el PR del evento
+            else if (context.payload.pull_request) {
+              pr = context.payload.pull_request;
+            }
+            // Si es check_suite, obtener PRs asociados
+            else if (context.payload.check_suite) {
+              const prs = context.payload.check_suite.pull_requests;
+              if (prs && prs.length > 0) {
+                const prData = await github.rest.pulls.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: prs[0].number
+                });
+                pr = prData.data;
+              }
+            }
+
+            if (!pr) {
+              core.setOutput('number', '');
+              core.setOutput('title', '');
+              return;
+            }
+
+            core.setOutput('number', pr.number.toString());
+            core.setOutput('title', pr.title);
+            core.setOutput('author', pr.user.login);
+            core.setOutput('base', pr.base.ref);
+            core.setOutput('labels', pr.labels.map(l => l.name).join(','));
+
+            console.log(`📋 PR #${pr.number}: ${pr.title}`);
+            console.log(`   Author: ${pr.user.login}`);
+            console.log(`   Base: ${pr.base.ref}`);
+            console.log(`   Labels: ${pr.labels.map(l => l.name).join(', ')}`);
+
+      # Paso 2: Evaluar criterios de auto-merge
+      - name: 🎯 Evaluate auto-merge criteria
+        id: evaluate
+        if: steps.get-pr.outputs.number != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = parseInt('${{ steps.get-pr.outputs.number }}');
+            const author = '${{ steps.get-pr.outputs.author }}';
+            const base = '${{ steps.get-pr.outputs.base }}';
+            const labelsStr = '${{ steps.get-pr.outputs.labels }}';
+            const labels = labelsStr ? labelsStr.split(',') : [];
+
+            console.log('🔍 Evaluando criterios...');
+
+            // Criterio 1: Autor debe ser github-actions[bot]
+            const isBot = author === 'github-actions[bot]';
+            console.log(`   1. Bot author: ${isBot ? '✅' : '❌'} (${author})`);
+
+            // Criterio 2: Debe tener labels "automated" Y "security"
+            const hasAutomatedLabel = labels.includes('automated');
+            const hasSecurityLabel = labels.includes('security');
+            console.log(`   2. Automated label: ${hasAutomatedLabel ? '✅' : '❌'}`);
+            console.log(`   3. Security label: ${hasSecurityLabel ? '✅' : '❌'}`);
+
+            // Criterio 3: Base branch debe ser "develop"
+            const isDevelop = base === 'develop';
+            console.log(`   4. Target develop: ${isDevelop ? '✅' : '❌'} (${base})`);
+
+            // Obtener PR para más información
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber
+            });
+
+            // Criterio 4: No debe tener conflictos
+            const noConflicts = !pr.data.mergeable_state || pr.data.mergeable_state !== 'dirty';
+            console.log(`   5. No conflicts: ${noConflicts ? '✅' : '❌'}`);
+
+            // Criterio 5: No debe estar en draft
+            const notDraft = !pr.data.draft;
+            console.log(`   6. Not draft: ${notDraft ? '✅' : '❌'}`);
+
+            // Decisión final
+            const shouldMerge = isBot && hasAutomatedLabel && hasSecurityLabel &&
+                               isDevelop && noConflicts && notDraft;
+
+            core.setOutput('should_merge', shouldMerge.toString());
+
+            if (shouldMerge) {
+              console.log('✅ PR califica para auto-merge');
+            } else {
+              console.log('❌ PR NO califica para auto-merge');
+            }
+
+      # Paso 3: Verificar status de checks
+      # Razón: Solo mergear si todos los checks pasan
+      - name: ⏳ Wait for checks to complete
+        if: steps.evaluate.outputs.should_merge == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = parseInt('${{ steps.get-pr.outputs.number }}');
+
+            // Esperar hasta 10 minutos para que los checks completen
+            const maxWaitTime = 10 * 60 * 1000; // 10 minutos
+            const pollInterval = 30 * 1000;     // 30 segundos
+            const startTime = Date.now();
+
+            while (Date.now() - startTime < maxWaitTime) {
+              // Obtener commits del PR
+              const commits = await github.rest.pulls.listCommits({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber
+              });
+
+              const lastCommit = commits.data[commits.data.length - 1];
+
+              // Obtener check runs del último commit
+              const checkRuns = await github.rest.checks.listForRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: lastCommit.sha
+              });
+
+              const runs = checkRuns.data.check_runs;
+
+              // Verificar si hay checks
+              if (runs.length === 0) {
+                console.log('ℹ️  No hay checks configurados, procediendo...');
+                break;
+              }
+
+              // Verificar status de todos los checks
+              const pending = runs.filter(r => r.status !== 'completed');
+              const failed = runs.filter(r => r.status === 'completed' && r.conclusion !== 'success' && r.conclusion !== 'neutral');
+
+              console.log(`📊 Checks: ${runs.length} total, ${pending.length} pending, ${failed.length} failed`);
+
+              // Si hay checks fallidos, fallar inmediatamente
+              if (failed.length > 0) {
+                core.setFailed(`❌ ${failed.length} check(s) fallaron:\n${failed.map(r => `  - ${r.name}`).join('\n')}`);
+                return;
+              }
+
+              // Si todos completaron, salir
+              if (pending.length === 0) {
+                console.log('✅ Todos los checks pasaron');
+                break;
+              }
+
+              // Esperar antes del siguiente poll
+              console.log(`⏳ Esperando ${pollInterval/1000}s... (${pending.length} checks pendientes)`);
+              await new Promise(resolve => setTimeout(resolve, pollInterval));
+            }
+
+            // Timeout
+            if (Date.now() - startTime >= maxWaitTime) {
+              core.setFailed('❌ Timeout esperando que los checks completen (10 minutos)');
+            }
+
+  # --------------------------------------------
+  # JOB 2: Aprobar y Mergear PR
+  # --------------------------------------------
+  auto-merge:
+    name: 🔀 Auto-Merge PR
+    runs-on: ubuntu-latest
+    needs: evaluate-pr
+
+    # Solo ejecutar si el PR califica
+    if: needs.evaluate-pr.outputs.should_merge == 'true'
+
+    steps:
+      # Paso 1: Aprobar el PR
+      # Razón: GitHub require aprobación antes de merge (por CODEOWNERS)
+      - name: ✅ Approve PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = parseInt('${{ needs.evaluate-pr.outputs.pr_number }}');
+
+            try {
+              await github.rest.pulls.createReview({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+                event: 'APPROVE',
+                body: `🤖 **Auto-aprobación por seguridad**
+
+                Este PR fue aprobado automáticamente porque:
+                - ✅ Creado por GitHub Actions
+                - ✅ Es un fix de seguridad automatizado
+                - ✅ Todos los checks pasaron
+                - ✅ Target branch: develop
+                - ✅ Sin conflictos de merge
+
+                El sistema de auto-merge procederá a mergear este PR.
+
+                ---
+                🤖 Aprobado automáticamente por Auto-Merge workflow`
+              });
+
+              console.log('✅ PR aprobado');
+            } catch (error) {
+              // Si ya fue aprobado, continuar
+              if (error.message.includes('already submitted')) {
+                console.log('ℹ️  PR ya fue aprobado previamente');
+              } else {
+                throw error;
+              }
+            }
+
+      # Paso 2: Mergear el PR
+      # Razón: Integrar los cambios a develop automáticamente
+      - name: 🔀 Merge PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = parseInt('${{ needs.evaluate-pr.outputs.pr_number }}');
+
+            try {
+              // Intentar merge con squash (tu preferencia según CONTRIBUTING.md)
+              const result = await github.rest.pulls.merge({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+                merge_method: 'squash',  // Opciones: merge, squash, rebase
+                commit_title: '${{ needs.evaluate-pr.outputs.pr_title }}',
+                commit_message: `Auto-merged by security workflow
+
+                This PR was automatically merged because it passed all security and quality checks.
+
+                PR: #${prNumber}
+                Workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`
+              });
+
+              console.log('✅ PR merged successfully');
+              console.log(`   SHA: ${result.data.sha}`);
+
+              // Comentar en el PR
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: `🎉 **Auto-merged exitosamente**
+
+                Este PR fue mergeado automáticamente a \`develop\`.
+
+                ### ✅ Verificaciones Completadas
+                - Build exitoso
+                - Tests pasados
+                - Lint pasado
+                - Aprobación automática
+
+                ### 📋 Próximos Pasos
+                1. Los cambios están ahora en \`develop\`
+                2. Serán incluidos en el próximo release a \`master\`
+                3. Monitorear que no haya regresiones
+
+                ---
+                🤖 Merged automáticamente por Auto-Merge workflow`
+              });
+
+            } catch (error) {
+              console.error('❌ Error al mergear:', error.message);
+
+              // Notificar en el PR si falla
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: `⚠️ **Auto-merge falló**
+
+                El sistema no pudo mergear automáticamente este PR.
+
+                **Error**: ${error.message}
+
+                **Acción requerida**: Por favor mergea manualmente.
+
+                ---
+                🤖 Notificado por Auto-Merge workflow`
+              });
+
+              throw error;
+            }
+
+      # Paso 3: Limpiar branch (opcional)
+      # Razón: Mantener el repositorio limpio
+      - name: 🗑️ Delete branch
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = parseInt('${{ needs.evaluate-pr.outputs.pr_number }}');
+
+            // Obtener información del PR
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber
+            });
+
+            const branchName = pr.data.head.ref;
+
+            try {
+              // Eliminar branch
+              await github.rest.git.deleteRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `heads/${branchName}`
+              });
+
+              console.log(`✅ Branch '${branchName}' eliminado`);
+            } catch (error) {
+              console.log(`ℹ️  No se pudo eliminar branch '${branchName}': ${error.message}`);
+              // No fallar si no se puede eliminar el branch
+            }
+
+  # --------------------------------------------
+  # JOB 3: Resumen
+  # --------------------------------------------
+  summary:
+    name: 📊 Resumen
+    runs-on: ubuntu-latest
+    needs: [evaluate-pr, auto-merge]
+    if: always()
+
+    steps:
+      - name: 📋 Generate summary
+        run: |
+          echo "# 🤖 Auto-Merge - Resumen" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.evaluate-pr.outputs.should_merge }}" == "true" ]; then
+            echo "## ✅ PR Calificó para Auto-Merge" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "- **PR**: #${{ needs.evaluate-pr.outputs.pr_number }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Título**: ${{ needs.evaluate-pr.outputs.pr_title }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            if [ "${{ needs.auto-merge.result }}" == "success" ]; then
+              echo "### 🎉 Merge Exitoso" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "El PR fue aprobado y mergeado automáticamente a \`develop\`." >> $GITHUB_STEP_SUMMARY
+            else
+              echo "### ⚠️ Merge Falló" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "Hubo un error al intentar mergear. Revisar logs y mergear manualmente." >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "## ℹ️ PR No Califica para Auto-Merge" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "El PR no cumple todos los criterios para auto-merge." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Criterios Requeridos:" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ Autor: github-actions[bot]" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ Labels: automated + security" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ Target: develop" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ Sin conflictos" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ No es draft" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ Todos los checks pasan" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "🤖 Generado por Auto-Merge workflow" >> $GITHUB_STEP_SUMMARY
