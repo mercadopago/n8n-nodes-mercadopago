@@ -1,4 +1,4 @@
-import { RequestInit } from '../helpers/mockCtx';
+import { RequestInit, SftpCredentials } from '../helpers/mockCtx';
 
 // Tipo para el contexto de prueba
 export type TestContext = {
@@ -6,6 +6,7 @@ export type TestContext = {
   request: (init: RequestInit) => Promise<any>;
   nodeError: (message: string) => never;
   lastRequest?: RequestInit;
+  sftpCredentials?: SftpCredentials;
 };
 
 // Tipo para los handlers de operaciones

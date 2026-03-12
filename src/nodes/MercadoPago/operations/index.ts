@@ -25,6 +25,14 @@ export type MercadoPagoCredentials = {
 	accessToken: string;
 };
 
+export type SftpCredentials = {
+	server?: string;
+	username?: string;
+	password?: string;
+	remote_dir?: string;
+	port?: number;
+};
+
 export type RequestInit = {
 	method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 	url: string;
@@ -41,6 +49,7 @@ export type HandlerCtx = {
 	get: <T = unknown>(name: string, def?: T) => T;
 	request: <TResponse = unknown>(init: RequestInit) => Promise<TResponse>;
 	credentials: MercadoPagoCredentials;
+	sftpCredentials?: SftpCredentials;
 	nodeError: (msg: string) => never;
 	helpers: IExecuteFunctions['helpers'];
 };

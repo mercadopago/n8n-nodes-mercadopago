@@ -9,10 +9,19 @@ export type RequestInit = {
   timeoutMs?: number;
 };
 
+export type SftpCredentials = {
+  server?: string;
+  username?: string;
+  password?: string;
+  remote_dir?: string;
+  port?: number;
+};
+
 export type MockCtxOptions = {
   params?: Record<string, any>;
   requestImpl?: (init: RequestInit) => any | Promise<any>;
   credentials?: { accessToken: string };
+  sftpCredentials?: SftpCredentials;
 };
 
 /**
@@ -50,6 +59,8 @@ export function makeMockCtx(options: MockCtxOptions = {}) {
     lastRequest: state.lastRequest as RequestInit | undefined,
 
     credentials: options.credentials ?? { accessToken: 'test-access-token' },
+
+    sftpCredentials: options.sftpCredentials,
   } as const;
 
   return ctx;
