@@ -58,9 +58,9 @@
     "@typescript-eslint/eslint-plugin": "8.39.1",
     "@typescript-eslint/parser": "8.39.1",
     "@vitest/coverage-v8": "^3.2.4",
-    "eslint": "^9.34.0",
-    "eslint-plugin-n8n-nodes-base": "1.16.3",
     "esbuild": "^0.25.0",
+    "eslint": "^9.34.0",
+    "eslint-plugin-n8n-nodes-base": "^1.16.6",
     "globals": "^16.4.0",
     "gulp": "5.0.1",
     "jiti": "^2.5.1",
@@ -74,7 +74,6 @@
   "peerDependencies": {
     "n8n-workflow": "*"
   },
-  "dependencies": {},
   "overrides": {
     "esbuild": "^0.25.0",
     "@isaacs/brace-expansion": ">=5.0.1",
