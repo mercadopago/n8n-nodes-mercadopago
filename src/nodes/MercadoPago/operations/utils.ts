@@ -120,33 +120,56 @@ export function parseFrequency(ctx: HandlerCtx, paramName = 'frequency'): Parsed
 }
 
 /**
- * Parses the sftp_info collection from node UI.
- * Returns undefined if no valid SFTP fields are provided.
- * Prunes empty/undefined fields from the result.
+ * Parses the sftp_info collection from node UI and merges with SFTP credentials.
+ *
+ * Priority (highest wins):
+ *   1. Non-empty node parameter value (supports dynamic expressions)
+ *   2. Value from the SFTP credential (encrypted at rest by n8n)
+ *   3. undefined (field omitted from payload)
+ *
+ * For port: 0 means "use credential value" (default in UI).
+ * For password: no trim is applied (passwords may contain leading/trailing spaces).
+ *
+ * Backward compatible: if `ctx.sftpCredentials` is undefined, behaves identically
+ * to the previous implementation.
  */
 export function parseSftpInfo(ctx: HandlerCtx, paramName = 'sftp_info'): SftpInfoValues | undefined {
 	const sftpInfo = ctx.get<SftpInfoParam | undefined>(paramName, undefined);
 	const sftp = sftpInfo?.sftpInfoValues;
+	const cred = ctx.sftpCredentials;
 
-	if (!sftp || !Object.keys(sftp).length) {
-		return undefined;
-	}
-
-	const sftpPayload: SftpInfoValues = {
-		server: (sftp.server ?? '').toString().trim() || undefined,
-		password: (sftp.password ?? '').toString() || undefined,
-		remote_dir: (sftp.remote_dir ?? '').toString().trim() || undefined,
-		port: typeof sftp.port === 'number' ? sftp.port : undefined,
-		username: (sftp.username ?? '').toString().trim() || undefined,
+	// Helper: resolve a string field — param wins over credential, empty/whitespace = absent
+	const str = (paramVal: unknown, credVal: unknown): string | undefined => {
+		const p = (paramVal ?? '').toString().trim();
+		if (p) return p;
+		const c = (credVal ?? '').toString().trim();
+		return c || undefined;
 	};
 
-	// Remove empty keys
-	(Object.keys(sftpPayload) as Array<keyof SftpInfoValues>).forEach((k) => {
-		const v = sftpPayload[k];
-		if (v === undefined || v === '') {
-			delete sftpPayload[k];
-		}
-	});
+	// Helper: resolve password — no trim (passwords may have intentional spaces)
+	const pwd = (paramVal: unknown, credVal: unknown): string | undefined => {
+		const p = (paramVal ?? '').toString();
+		if (p) return p;
+		const c = (credVal ?? '').toString();
+		return c || undefined;
+	};
+
+	const server = str(sftp?.server, cred?.server);
+	const username = str(sftp?.username, cred?.username);
+	const password = pwd(sftp?.password, cred?.password);
+	const remote_dir = str(sftp?.remote_dir, cred?.remote_dir);
+
+	// Port: 0 means "use credential value"; any positive param value wins
+	const paramPort = typeof sftp?.port === 'number' ? sftp.port : 0;
+	const credPort = typeof cred?.port === 'number' ? cred.port : 0;
+	const port = paramPort > 0 ? paramPort : (credPort > 0 ? credPort : undefined);
+
+	const sftpPayload: SftpInfoValues = {};
+	if (server !== undefined) sftpPayload.server = server;
+	if (username !== undefined) sftpPayload.username = username;
+	if (password !== undefined) sftpPayload.password = password;
+	if (remote_dir !== undefined) sftpPayload.remote_dir = remote_dir;
+	if (port !== undefined) sftpPayload.port = port;
 
 	return Object.keys(sftpPayload).length ? sftpPayload : undefined;
 }
