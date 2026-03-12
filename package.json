@@ -45,7 +45,8 @@
   "n8n": {
     "n8nNodesApiVersion": 1,
     "credentials": [
-      "dist/credentials/MercadoPagoApi.credentials.js"
+      "dist/credentials/MercadoPagoApi.credentials.js",
+      "dist/credentials/MercadoPagoSftp.credentials.js"
     ],
     "nodes": [
       "dist/nodes/MercadoPago/MercadoPago.node.js"
