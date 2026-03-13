@@ -1,0 +1,567 @@
+# ============================================
+# SMART SECURITY FIX - Workflow Híbrido
+# ============================================
+# Este workflow implementa un sistema inteligente de respuesta a vulnerabilidades:
+# 1. Detecta vulnerabilidades automáticamente (via Dependabot)
+# 2. Evalúa la severidad (critical/high/medium/low)
+# 3. Para vulnerabilidades críticas/altas:
+#    - Crea branch automáticamente
+#    - Actualiza dependencias
+#    - Ejecuta tests completos
+#    - Si pasan: crea PR con auto-merge
+#    - Si fallan: notifica al equipo
+# 4. Para vulnerabilidades medias/bajas:
+#    - Crea issue para revisión manual
+#    - Agrupa para siguiente ventana de mantenimiento
+
+name: 🔒 Smart Security Fix
+
+# ============================================
+# TRIGGERS (Cuándo se ejecuta)
+# ============================================
+on:
+  # 1. Schedule: Revisa vulnerabilidades diariamente a las 3 AM
+  #    Razón: Corre después de que Dependabot haya actualizado (2 AM)
+  schedule:
+    - cron: '0 3 * * *'
+
+  # 2. Manual dispatch: Permite ejecutar manualmente desde GitHub UI
+  #    Razón: Útil para testing o emergencias
+  workflow_dispatch:
+    inputs:
+      severity:
+        description: 'Mínima severidad a procesar (critical, high, medium, low)'
+        required: false
+        default: 'high'
+        type: choice
+        options:
+          - critical
+          - high
+          - medium
+          - low
+
+  # 3. Push a dependabot branches: Se ejecuta cuando Dependabot crea un branch
+  #    Razón: Respuesta inmediata a nuevas vulnerabilidades
+  push:
+    branches:
+      - 'dependabot/**'
+
+# ============================================
+# PERMISSIONS (Permisos necesarios)
+# ============================================
+# Explicación: GitHub Actions necesita permisos explícitos para:
+# - contents: write → Crear branches y commits
+# - pull-requests: write → Crear y modificar PRs
+# - issues: write → Crear issues de notificación
+# - security-events: read → Leer alertas de seguridad
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  security-events: read
+  checks: read
+
+# ============================================
+# JOBS (Tareas a ejecutar)
+# ============================================
+jobs:
+  # --------------------------------------------
+  # JOB 1: Analizar Vulnerabilidades
+  # --------------------------------------------
+  # Propósito: Obtener lista de vulnerabilidades y decidir qué hacer
+  analyze-vulnerabilities:
+    name: 📊 Analizar Vulnerabilidades
+    runs-on: ubuntu-latest
+
+    # Outputs: Estos valores estarán disponibles para jobs posteriores
+    outputs:
+      has_vulnerabilities: ${{ steps.check.outputs.has_vulns }}
+      critical_count: ${{ steps.check.outputs.critical }}
+      high_count: ${{ steps.check.outputs.high }}
+      should_autofix: ${{ steps.decide.outputs.autofix }}
+
+    steps:
+      # Paso 1: Checkout del código
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Paso 2: Setup Node.js
+      # Razón: Necesario para ejecutar npm audit
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.15'  # Tu versión especificada en package.json
+          cache: 'npm'
+
+      # Paso 3: Instalar dependencias
+      # Razón: npm audit necesita node_modules para analizar
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      # Paso 4: Ejecutar npm audit
+      # Razón: Obtener lista completa de vulnerabilidades
+      - name: 🔍 Run npm audit
+        id: audit
+        # continue-on-error: true permite que el workflow continúe aunque npm audit falle
+        # (npm audit retorna exit code != 0 si hay vulnerabilidades)
+        continue-on-error: true
+        run: |
+          # Ejecutar audit y guardar en archivo JSON
+          npm audit --json > audit-results.json || true
+
+          # Mostrar resumen legible
+          echo "📋 Resumen de vulnerabilidades:"
+          npm audit
+
+      # Paso 5: Analizar resultados
+      # Razón: Parsear JSON y contar vulnerabilidades por severidad
+      - name: 📊 Analyze audit results
+        id: check
+        run: |
+          # Usar jq para parsear JSON (jq viene preinstalado en ubuntu-latest)
+          CRITICAL=$(jq '.metadata.vulnerabilities.critical // 0' audit-results.json)
+          HIGH=$(jq '.metadata.vulnerabilities.high // 0' audit-results.json)
+          MODERATE=$(jq '.metadata.vulnerabilities.moderate // 0' audit-results.json)
+          LOW=$(jq '.metadata.vulnerabilities.low // 0' audit-results.json)
+
+          # Calcular total
+          TOTAL=$((CRITICAL + HIGH + MODERATE + LOW))
+
+          # Guardar en outputs para siguiente job
+          echo "critical=$CRITICAL" >> $GITHUB_OUTPUT
+          echo "high=$HIGH" >> $GITHUB_OUTPUT
+          echo "moderate=$MODERATE" >> $GITHUB_OUTPUT
+          echo "low=$LOW" >> $GITHUB_OUTPUT
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+
+          # Verificar si hay vulnerabilidades
+          if [ $TOTAL -gt 0 ]; then
+            echo "has_vulns=true" >> $GITHUB_OUTPUT
+            echo "✅ Encontradas $TOTAL vulnerabilidades"
+            echo "   🔴 Critical: $CRITICAL"
+            echo "   🟠 High: $HIGH"
+            echo "   🟡 Moderate: $MODERATE"
+            echo "   🟢 Low: $LOW"
+          else
+            echo "has_vulns=false" >> $GITHUB_OUTPUT
+            echo "✅ No se encontraron vulnerabilidades"
+          fi
+
+      # Paso 6: Decidir estrategia
+      # Razón: Auto-fix solo para critical/high, manual para moderate/low
+      - name: 🎯 Decide strategy
+        id: decide
+        run: |
+          CRITICAL=${{ steps.check.outputs.critical }}
+          HIGH=${{ steps.check.outputs.high }}
+
+          # Si hay vulnerabilidades críticas o altas → auto-fix
+          if [ $CRITICAL -gt 0 ] || [ $HIGH -gt 0 ]; then
+            echo "autofix=true" >> $GITHUB_OUTPUT
+            echo "🤖 Estrategia: AUTO-FIX (vulnerabilidades críticas/altas detectadas)"
+          else
+            echo "autofix=false" >> $GITHUB_OUTPUT
+            echo "👤 Estrategia: MANUAL REVIEW (solo vulnerabilidades moderadas/bajas)"
+          fi
+
+  # --------------------------------------------
+  # JOB 2: Auto-Fix Crítico
+  # --------------------------------------------
+  # Propósito: Aplicar fix automático para vulnerabilidades críticas/altas
+  # Condición: Solo si analyze-vulnerabilities decidió que es necesario
+  auto-fix-critical:
+    name: 🔧 Auto-Fix Vulnerabilidades Críticas
+    runs-on: ubuntu-latest
+    needs: analyze-vulnerabilities
+
+    # Ejecutar solo si:
+    # 1. Hay vulnerabilidades
+    # 2. Se decidió hacer auto-fix
+    if: |
+      needs.analyze-vulnerabilities.outputs.has_vulnerabilities == 'true' &&
+      needs.analyze-vulnerabilities.outputs.should_autofix == 'true'
+
+    steps:
+      # Paso 1: Checkout
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # fetch-depth: 0 descarga historial completo (necesario para crear branches)
+          fetch-depth: 0
+
+      # Paso 2: Setup Node.js
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.15'
+          cache: 'npm'
+
+      # Paso 3: Configurar Git
+      # Razón: Necesario para hacer commits
+      - name: ⚙️ Configure Git
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+      # Paso 4: Crear branch de seguridad
+      # Razón: Seguir el workflow feature/security-*
+      - name: 🌿 Create security branch
+        id: branch
+        run: |
+          # Generar nombre único con timestamp
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          BRANCH_NAME="feature/security-fix-$TIMESTAMP"
+
+          # Crear y checkout branch
+          git checkout -b $BRANCH_NAME
+
+          # Guardar nombre de branch en output
+          echo "name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          echo "✅ Branch creado: $BRANCH_NAME"
+
+      # Paso 5: Instalar dependencias actuales
+      - name: 📦 Install current dependencies
+        run: npm ci
+
+      # Paso 6: Aplicar fixes de seguridad
+      # Razón: npm audit fix actualiza solo lo necesario para resolver vulnerabilidades
+      - name: 🔒 Apply security fixes
+        id: fix
+        run: |
+          echo "🔧 Aplicando fixes de seguridad..."
+
+          # npm audit fix: Solo actualiza dependencias con vulnerabilidades
+          # --package-lock-only: Solo actualiza lock file (más seguro)
+          # Removemos --package-lock-only para que actualice de verdad
+          npm audit fix
+
+          # Verificar si hubo cambios
+          if git diff --quiet package.json package-lock.json; then
+            echo "changes=false" >> $GITHUB_OUTPUT
+            echo "⚠️  No se realizaron cambios (puede que las vulnerabilidades no tengan fix disponible)"
+          else
+            echo "changes=true" >> $GITHUB_OUTPUT
+            echo "✅ Cambios aplicados en package.json y package-lock.json"
+          fi
+
+      # Paso 7: Rebuild (si hubo cambios)
+      # Razón: Asegurarse de que el proyecto compila
+      - name: 🔨 Build project
+        if: steps.fix.outputs.changes == 'true'
+        id: build
+        continue-on-error: true
+        run: |
+          npm run build
+
+      # Paso 8: Ejecutar tests
+      # Razón: Verificar que los fixes no rompieron nada
+      - name: 🧪 Run tests
+        if: steps.fix.outputs.changes == 'true'
+        id: test
+        continue-on-error: true
+        run: |
+          npm run test:unit
+
+      # Paso 9: Ejecutar lint
+      # Razón: Asegurar calidad de código
+      - name: 🔍 Run lint
+        if: steps.fix.outputs.changes == 'true'
+        id: lint
+        continue-on-error: true
+        run: |
+          npm run lint
+
+      # Paso 10: Commit cambios (solo si todo pasó)
+      # Razón: Solo commitear si build + tests + lint pasaron
+      - name: 💾 Commit changes
+        if: |
+          steps.fix.outputs.changes == 'true' &&
+          steps.build.outcome == 'success' &&
+          steps.test.outcome == 'success' &&
+          steps.lint.outcome == 'success'
+        run: |
+          git add package.json package-lock.json
+
+          # Commit con mensaje siguiendo tu estándar Gitmoji
+          git commit -m "🔒 security: auto-fix vulnerabilities detected by Dependabot
+
+          Fixed ${{ needs.analyze-vulnerabilities.outputs.critical_count }} critical and ${{ needs.analyze-vulnerabilities.outputs.high_count }} high severity vulnerabilities.
+
+          ✅ All checks passed:
+          - Build successful
+          - Tests passing
+          - Lint passing
+
+          Co-Authored-By: GitHub Actions <github-actions[bot]@users.noreply.github.com>"
+
+      # Paso 11: Push branch
+      - name: 📤 Push branch
+        if: |
+          steps.fix.outputs.changes == 'true' &&
+          steps.build.outcome == 'success' &&
+          steps.test.outcome == 'success' &&
+          steps.lint.outcome == 'success'
+        run: |
+          git push origin ${{ steps.branch.outputs.name }}
+          echo "✅ Branch pushed: ${{ steps.branch.outputs.name }}"
+
+      # Paso 12: Crear Pull Request
+      # Razón: PR para revisión humana antes de merge
+      - name: 🔀 Create Pull Request
+        if: |
+          steps.fix.outputs.changes == 'true' &&
+          steps.build.outcome == 'success' &&
+          steps.test.outcome == 'success' &&
+          steps.lint.outcome == 'success'
+        id: create_pr
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ steps.branch.outputs.name }}
+          base: develop  # Tu workflow: feature → develop
+          title: "🔒 Security: Auto-fix vulnerabilities (${{ needs.analyze-vulnerabilities.outputs.critical_count }} critical, ${{ needs.analyze-vulnerabilities.outputs.high_count }} high)"
+          body: |
+            ## 🔒 Automatic Security Fix
+
+            Este PR fue generado automáticamente por el sistema de seguridad híbrido en respuesta a vulnerabilidades detectadas por Dependabot.
+
+            ### 📊 Vulnerabilidades Detectadas
+            - 🔴 **Critical**: ${{ needs.analyze-vulnerabilities.outputs.critical_count }}
+            - 🟠 **High**: ${{ needs.analyze-vulnerabilities.outputs.high_count }}
+
+            ### ✅ Verificaciones Automáticas
+            - [x] Build exitoso
+            - [x] Tests unitarios pasando
+            - [x] Lint pasando
+            - [x] Dependencias actualizadas
+
+            ### 🔍 Cambios Realizados
+            Las siguientes dependencias fueron actualizadas para resolver vulnerabilidades:
+
+            ```bash
+            npm audit fix
+            ```
+
+            ### 📋 Próximos Pasos
+            1. [ ] Revisar cambios en `package.json` y `package-lock.json`
+            2. [ ] Verificar que las actualizaciones son compatibles
+            3. [ ] Aprobar el PR
+            4. [ ] Merge a `develop`
+
+            ### ⚠️ Importante
+            Este PR fue creado porque se detectaron vulnerabilidades **críticas o altas**.
+            Se recomienda revisar y aprobar lo antes posible.
+
+            ### 🤖 Automatización
+            - Branch: `${{ steps.branch.outputs.name }}`
+            - Workflow: [Smart Security Fix](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            - Ejecutado: ${{ github.event_name }}
+
+            ---
+            🤖 Generado automáticamente por GitHub Actions
+
+          labels: |
+            security
+            automated
+            dependencies
+            priority-high
+          reviewers: |
+            samhermeli
+            Harievilozanini
+          assignees: |
+            samhermeli
+
+      # Paso 13: Comentar en PR con detalles
+      - name: 💬 Comment on PR with details
+        if: steps.create_pr.outputs.pull-request-number
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = ${{ steps.create_pr.outputs.pull-request-number }};
+
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: `### 📊 Análisis Detallado
+
+            | Severidad | Cantidad |
+            |-----------|----------|
+            | 🔴 Critical | ${{ needs.analyze-vulnerabilities.outputs.critical_count }} |
+            | 🟠 High | ${{ needs.analyze-vulnerabilities.outputs.high_count }} |
+
+            **Recomendación**: Revisar y aprobar este PR lo antes posible debido a la severidad de las vulnerabilidades.
+
+            Para ver el reporte completo:
+            \`\`\`bash
+            npm audit
+            \`\`\`
+
+            🤖 Este comentario fue generado automáticamente.`
+            });
+
+      # Paso 14: Notificar si algo falló
+      - name: 🚨 Notify on failure
+        if: |
+          steps.fix.outputs.changes == 'true' &&
+          (steps.build.outcome == 'failure' ||
+           steps.test.outcome == 'failure' ||
+           steps.lint.outcome == 'failure')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Determinar qué falló
+            const failures = [];
+            if ('${{ steps.build.outcome }}' === 'failure') failures.push('Build');
+            if ('${{ steps.test.outcome }}' === 'failure') failures.push('Tests');
+            if ('${{ steps.lint.outcome }}' === 'failure') failures.push('Lint');
+
+            // Crear issue
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Security auto-fix failed - Manual intervention needed',
+              body: `## ⚠️ El fix automático de seguridad falló
+
+            ### 📊 Vulnerabilidades Detectadas
+            - 🔴 Critical: ${{ needs.analyze-vulnerabilities.outputs.critical_count }}
+            - 🟠 High: ${{ needs.analyze-vulnerabilities.outputs.high_count }}
+
+            ### ❌ Fallos Detectados
+            ${failures.map(f => `- ${f}`).join('\n')}
+
+            ### 🔧 Acción Requerida
+            Las vulnerabilidades necesitan ser resueltas manualmente porque:
+            1. Los fixes automáticos causan fallos en: ${failures.join(', ')}
+            2. Puede requerir cambios de código adicionales
+            3. Puede haber breaking changes en las actualizaciones
+
+            ### 📋 Pasos Sugeridos
+            1. Revisar el workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            2. Ejecutar localmente: \`npm audit\`
+            3. Intentar fix manual: \`npm audit fix\`
+            4. Si no funciona: \`npm audit\` para ver detalles
+            5. Actualizar dependencias manualmente si es necesario
+            6. Ejecutar tests: \`npm run build && npm test && npm run lint\`
+
+            ### 🔗 Información Adicional
+            - Branch: \`${{ steps.branch.outputs.name }}\`
+            - Workflow: [Ver logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+            ---
+            🤖 Issue creado automáticamente`,
+              labels: ['security', 'help-wanted', 'priority-high', 'manual-fix-needed'],
+              assignees: ['samhermeli', 'Harievilozanini']
+            });
+
+  # --------------------------------------------
+  # JOB 3: Notificación para Review Manual
+  # --------------------------------------------
+  # Propósito: Crear issue para vulnerabilidades de severidad media/baja
+  # Condición: Solo si hay vulnerabilidades pero no requieren auto-fix
+  manual-review-needed:
+    name: 👤 Crear Issue para Review Manual
+    runs-on: ubuntu-latest
+    needs: analyze-vulnerabilities
+
+    # Ejecutar solo si:
+    # 1. Hay vulnerabilidades
+    # 2. NO se decidió hacer auto-fix (solo moderate/low)
+    if: |
+      needs.analyze-vulnerabilities.outputs.has_vulnerabilities == 'true' &&
+      needs.analyze-vulnerabilities.outputs.should_autofix == 'false'
+
+    steps:
+      - name: 📝 Create issue for manual review
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🔍 Security: Vulnerabilidades de severidad media/baja detectadas',
+              body: `## 🔍 Review Manual de Seguridad
+
+            Se detectaron vulnerabilidades de severidad **media o baja** que requieren revisión manual.
+
+            ### 📊 Resumen
+            - 🟡 Moderate: ${{ needs.analyze-vulnerabilities.outputs.moderate }}
+            - 🟢 Low: ${{ needs.analyze-vulnerabilities.outputs.low }}
+
+            ### 🤔 ¿Por qué manual?
+            Las vulnerabilidades de severidad media/baja se revisan manualmente para:
+            1. Evitar actualizaciones innecesarias que puedan introducir breaking changes
+            2. Agrupar múltiples updates en un solo PR planificado
+            3. Evaluar el impacto real en el proyecto
+
+            ### 📋 Próximos Pasos
+            1. Ejecutar: \`npm audit\`
+            2. Revisar cada vulnerabilidad individualmente
+            3. Decidir si actualizar ahora o en próxima ventana de mantenimiento
+            4. Crear PR manual si es necesario
+
+            ### 💡 Sugerencia
+            Puedes agrupar estas actualizaciones con otras mejoras en el próximo sprint de mantenimiento.
+
+            ### 🔗 Información
+            - Workflow: [Ver logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            - Ejecutado: ${{ github.event_name }}
+
+            ---
+            🤖 Issue creado automáticamente por Smart Security Fix`,
+              labels: ['security', 'review-needed', 'low-priority', 'dependencies']
+            });
+
+  # --------------------------------------------
+  # JOB 4: Resumen Final
+  # --------------------------------------------
+  # Propósito: Mostrar resumen en el workflow run
+  summary:
+    name: 📊 Resumen de Ejecución
+    runs-on: ubuntu-latest
+    needs: [analyze-vulnerabilities, auto-fix-critical, manual-review-needed]
+    if: always()  # Ejecutar siempre, incluso si jobs anteriores fallan
+
+    steps:
+      - name: 📋 Generate summary
+        run: |
+          echo "# 🔒 Smart Security Fix - Resumen" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 📊 Análisis de Vulnerabilidades" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.analyze-vulnerabilities.outputs.has_vulnerabilities }}" == "true" ]; then
+            echo "| Severidad | Cantidad |" >> $GITHUB_STEP_SUMMARY
+            echo "|-----------|----------|" >> $GITHUB_STEP_SUMMARY
+            echo "| 🔴 Critical | ${{ needs.analyze-vulnerabilities.outputs.critical_count }} |" >> $GITHUB_STEP_SUMMARY
+            echo "| 🟠 High | ${{ needs.analyze-vulnerabilities.outputs.high_count }} |" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            if [ "${{ needs.analyze-vulnerabilities.outputs.should_autofix }}" == "true" ]; then
+              echo "## 🤖 Acción Tomada: Auto-Fix" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "Se intentó aplicar fix automático para vulnerabilidades críticas/altas." >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+
+              if [ "${{ needs.auto-fix-critical.result }}" == "success" ]; then
+                echo "✅ **Auto-fix exitoso**: PR creado para revisión" >> $GITHUB_STEP_SUMMARY
+              else
+                echo "⚠️ **Auto-fix falló**: Issue creado para intervención manual" >> $GITHUB_STEP_SUMMARY
+              fi
+            else
+              echo "## 👤 Acción Tomada: Manual Review" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "Issue creado para revisión manual de vulnerabilidades media/baja." >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "✅ **No se encontraron vulnerabilidades**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "El proyecto está seguro. Próxima revisión en 24 horas." >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "🤖 Generado por Smart Security Fix" >> $GITHUB_STEP_SUMMARY

@@ -200,6 +200,69 @@ describe('editReleaseReportConfig operation', () => {
     expect(result).toEqual({ id: 'config_123', updated: true });
   });
 
+  it('should use SFTP credential values when no node params provided', async () => {
+    ctx = makeMockCtx({
+      params: { ...baseParams },
+      sftpCredentials: {
+        server: 'cred-sftp.example.com',
+        username: 'cred_user',
+        password: 'cred_pass',
+        remote_dir: '/cred/reports',
+        port: 2222,
+      },
+      requestImpl: async (init) => {
+        expect(init.body.sftp_info).toEqual({
+          server: 'cred-sftp.example.com',
+          username: 'cred_user',
+          password: 'cred_pass',
+          remote_dir: '/cred/reports',
+          port: 2222,
+        });
+        return { id: 'config_123', updated: true };
+      },
+    }) as TestContext;
+
+    const result = await editReleaseReportConfig(ctx);
+    expect(result).toEqual({ id: 'config_123', updated: true });
+  });
+
+  it('should merge SFTP credential with partial node param overrides', async () => {
+    ctx = makeMockCtx({
+      params: {
+        ...baseParams,
+        sftp_info: {
+          sftpInfoValues: {
+            server: 'override.example.com',
+            username: '',
+            password: '',
+            remote_dir: '',
+            port: 0,
+          },
+        },
+      },
+      sftpCredentials: {
+        server: 'cred.example.com',
+        username: 'cred_user',
+        password: 'cred_pass',
+        remote_dir: '/cred/dir',
+        port: 2222,
+      },
+      requestImpl: async (init) => {
+        expect(init.body.sftp_info).toEqual({
+          server: 'override.example.com',
+          username: 'cred_user',
+          password: 'cred_pass',
+          remote_dir: '/cred/dir',
+          port: 2222,
+        });
+        return { id: 'config_123', updated: true };
+      },
+    }) as TestContext;
+
+    const result = await editReleaseReportConfig(ctx);
+    expect(result).toEqual({ id: 'config_123', updated: true });
+  });
+
   it('should perform PUT to release_report/config endpoint (happy path)', async () => {
     const result = await editReleaseReportConfig(ctx);
     

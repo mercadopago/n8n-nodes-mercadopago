@@ -1,0 +1,102 @@
+# Dependabot Configuration for n8n-nodes-mercadopago
+# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+
+updates:
+  # ============================================
+  # NPM Dependencies (package.json)
+  # ============================================
+  - package-ecosystem: "npm"
+    directory: "/"
+
+    # 🕐 Schedule: Revisa dependencias diariamente a las 2 AM UTC
+    # Razón: Balance entre estar actualizado y no saturar con PRs
+    schedule:
+      interval: "daily"
+      time: "02:00"
+      timezone: "UTC"
+
+    # 📝 PRs abiertos simultáneamente: máximo 5
+    # Razón: Evita saturar el repositorio con demasiados PRs
+    open-pull-requests-limit: 5
+
+    # 👥 Reviewers automáticos (de CODEOWNERS)
+    # Razón: Los code owners deben revisar cambios de seguridad
+    reviewers:
+      - "samhermeli"
+      - "Harievilozanini"
+
+    # 🏷️ Labels automáticos para organizar PRs
+    # Razón: Facilita filtrar y priorizar en GitHub
+    labels:
+      - "dependencies"
+      - "automated"
+
+    # 🎯 Estrategia de versionado
+    # Razón: 'increase' actualiza al mínimo necesario (más seguro)
+    # Opciones: auto, increase, increase-if-necessary, lockfile-only, widen
+    versioning-strategy: "increase"
+
+    # 💬 Prefijo de commit con Gitmoji
+    # Razón: Consistente con tu preferencia de Gitmoji
+    commit-message:
+      prefix: "⬆️"
+      prefix-development: "⬆️"
+      include: "scope"
+
+    # 🔐 Actualizaciones de Seguridad
+    # Razón: Dependabot prioriza automáticamente las actualizaciones de seguridad
+    # No requiere configuración adicional en 'groups'
+    # Las actualizaciones de seguridad se crean como PRs separados con alta prioridad
+
+    # 📦 Agrupar actualizaciones por tipo (opcional)
+    # Razón: Agrupa actualizaciones menores/parches para facilitar revisión
+    groups:
+      # Agrupar todas las actualizaciones de parches de dev dependencies
+      dev-dependencies-patches:
+        dependency-type: "development"
+        update-types:
+          - "patch"
+          - "minor"
+
+    # ⚙️ Permitir actualizaciones indirectas
+    # Razón: Actualiza dependencias transitivas vulnerables
+    allow:
+      - dependency-type: "all"
+
+    # 🚫 Ignorar actualizaciones específicas (opcional)
+    # Descomentar si necesitas ignorar alguna dependencia
+    # ignore:
+    #   - dependency-name: "n8n-workflow"
+    #     # Razón: peer dependency, actualizar manualmente
+
+  # ============================================
+  # GitHub Actions (workflows)
+  # ============================================
+  - package-ecosystem: "github-actions"
+    directory: "/"
+
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "02:00"
+
+    labels:
+      - "dependencies"
+      - "github-actions"
+      - "automated"
+
+    commit-message:
+      prefix: "⬆️"
+      include: "scope"
+
+    reviewers:
+      - "samhermeli"
+
+# 📚 Notas:
+# 1. Dependabot creará PRs automáticamente cuando detecte actualizaciones
+# 2. Los PRs de seguridad tienen prioridad alta
+# 3. Los reviewers recibirán notificaciones automáticas
+# 4. El workflow de auto-merge (siguiente paso) puede aprobar automáticamente
+#    los PRs de parches menores si los tests pasan

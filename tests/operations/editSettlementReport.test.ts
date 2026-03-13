@@ -216,6 +216,69 @@ describe('editSettlementReport operation', () => {
     expect(result).toEqual({ id: 'config_settlement_456', updated: true });
   });
 
+  it('should use SFTP credential values when no node params provided', async () => {
+    ctx = makeMockCtx({
+      params: { ...baseParams },
+      sftpCredentials: {
+        server: 'cred-sftp.updated.com',
+        username: 'cred_user',
+        password: 'cred_pass',
+        remote_dir: '/cred/settlement',
+        port: 2222,
+      },
+      requestImpl: async (init) => {
+        expect(init.body.sftp_info).toEqual({
+          server: 'cred-sftp.updated.com',
+          username: 'cred_user',
+          password: 'cred_pass',
+          remote_dir: '/cred/settlement',
+          port: 2222,
+        });
+        return { id: 'config_settlement_456', updated: true };
+      },
+    }) as TestContext;
+
+    const result = await editSettlementReport(ctx);
+    expect(result).toEqual({ id: 'config_settlement_456', updated: true });
+  });
+
+  it('should merge SFTP credential with partial node param overrides', async () => {
+    ctx = makeMockCtx({
+      params: {
+        ...baseParams,
+        sftp_info: {
+          sftpInfoValues: {
+            server: 'override.updated.com',
+            username: '',
+            password: '',
+            remote_dir: '',
+            port: 0,
+          },
+        },
+      },
+      sftpCredentials: {
+        server: 'cred.updated.com',
+        username: 'cred_user',
+        password: 'cred_pass',
+        remote_dir: '/cred/dir',
+        port: 2222,
+      },
+      requestImpl: async (init) => {
+        expect(init.body.sftp_info).toEqual({
+          server: 'override.updated.com',
+          username: 'cred_user',
+          password: 'cred_pass',
+          remote_dir: '/cred/dir',
+          port: 2222,
+        });
+        return { id: 'config_settlement_456', updated: true };
+      },
+    }) as TestContext;
+
+    const result = await editSettlementReport(ctx);
+    expect(result).toEqual({ id: 'config_settlement_456', updated: true });
+  });
+
   it('should perform PUT to settlement_report/config endpoint (happy path)', async () => {
     const result = await editSettlementReport(ctx);
     
