@@ -50,15 +50,24 @@ updates:
     # No requiere configuración adicional en 'groups'
     # Las actualizaciones de seguridad se crean como PRs separados con alta prioridad
 
-    # 📦 Agrupar actualizaciones por tipo (opcional)
-    # Razón: Agrupa actualizaciones menores/parches para facilitar revisión
+    # 📦 Agrupar actualizaciones para reducir cantidad de PRs
+    # Razón: Sin grouping Dependabot crea PRs individuales (~9).
+    #         Con estos grupos se generan máximo 2 PRs de npm.
     groups:
-      # Agrupar todas las actualizaciones de parches de dev dependencies
-      dev-dependencies-patches:
+      # Agrupar TODAS las production dependencies en 1 PR
+      production-dependencies:
+        dependency-type: "production"
+        update-types:
+          - "patch"
+          - "minor"
+          - "major"
+      # Agrupar TODAS las dev dependencies en 1 PR
+      dev-dependencies:
         dependency-type: "development"
         update-types:
           - "patch"
           - "minor"
+          - "major"
 
     # ⚙️ Permitir actualizaciones indirectas
     # Razón: Actualiza dependencias transitivas vulnerables
@@ -90,6 +99,12 @@ updates:
     commit-message:
       prefix: "⬆️"
       include: "scope"
+
+    # 📦 Agrupar todas las GitHub Actions en 1 PR
+    groups:
+      github-actions-all:
+        patterns:
+          - "*"
 
     reviewers:
       - "samhermeli"

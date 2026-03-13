@@ -7,7 +7,7 @@
 # Criterios para auto-merge:
 # 1. PR creado por GitHub Actions (security fixes automáticos)
 # 2. Tiene label "automated" y "security"
-# 3. Target branch es "develop"
+# 3. Target branch es "master"
 # 4. Todos los checks pasan (build, tests, lint)
 # 5. No hay conflictos de merge
 
@@ -74,7 +74,7 @@ jobs:
 
             // Si es workflow_dispatch, usar el número proporcionado
             if (context.eventName === 'workflow_dispatch') {
-              const prNumber = ${{ github.event.inputs.pr_number }};
+              const prNumber = parseInt('${{ github.event.inputs.pr_number || 0 }}');
               pr = await github.rest.pulls.get({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -141,9 +141,9 @@ jobs:
             console.log(`   2. Automated label: ${hasAutomatedLabel ? '✅' : '❌'}`);
             console.log(`   3. Security label: ${hasSecurityLabel ? '✅' : '❌'}`);
 
-            // Criterio 3: Base branch debe ser "develop"
-            const isDevelop = base === 'develop';
-            console.log(`   4. Target develop: ${isDevelop ? '✅' : '❌'} (${base})`);
+            // Criterio 3: Base branch debe ser "master"
+            const isTargetBranch = base === 'master';
+            console.log(`   4. Target master: ${isTargetBranch ? '✅' : '❌'} (${base})`);
 
             // Obtener PR para más información
             const pr = await github.rest.pulls.get({
@@ -162,7 +162,7 @@ jobs:
 
             // Decisión final
             const shouldMerge = isBot && hasAutomatedLabel && hasSecurityLabel &&
-                               isDevelop && noConflicts && notDraft;
+                               isTargetBranch && noConflicts && notDraft;
 
             core.setOutput('should_merge', shouldMerge.toString());
 
@@ -271,7 +271,7 @@ jobs:
                 - ✅ Creado por GitHub Actions
                 - ✅ Es un fix de seguridad automatizado
                 - ✅ Todos los checks pasaron
-                - ✅ Target branch: develop
+                - ✅ Target branch: master
                 - ✅ Sin conflictos de merge
 
                 El sistema de auto-merge procederá a mergear este PR.
@@ -324,7 +324,7 @@ jobs:
                 issue_number: prNumber,
                 body: `🎉 **Auto-merged exitosamente**
 
-                Este PR fue mergeado automáticamente a \`develop\`.
+                Este PR fue mergeado automáticamente a \`master\`.
 
                 ### ✅ Verificaciones Completadas
                 - Build exitoso
@@ -333,9 +333,8 @@ jobs:
                 - Aprobación automática
 
                 ### 📋 Próximos Pasos
-                1. Los cambios están ahora en \`develop\`
-                2. Serán incluidos en el próximo release a \`master\`
-                3. Monitorear que no haya regresiones
+                1. Los cambios están ahora en \`master\`
+                2. Monitorear que no haya regresiones
 
                 ---
                 🤖 Merged automáticamente por Auto-Merge workflow`
@@ -421,7 +420,7 @@ jobs:
             if [ "${{ needs.auto-merge.result }}" == "success" ]; then
               echo "### 🎉 Merge Exitoso" >> $GITHUB_STEP_SUMMARY
               echo "" >> $GITHUB_STEP_SUMMARY
-              echo "El PR fue aprobado y mergeado automáticamente a \`develop\`." >> $GITHUB_STEP_SUMMARY
+              echo "El PR fue aprobado y mergeado automáticamente a \`master\`." >> $GITHUB_STEP_SUMMARY
             else
               echo "### ⚠️ Merge Falló" >> $GITHUB_STEP_SUMMARY
               echo "" >> $GITHUB_STEP_SUMMARY
@@ -435,7 +434,7 @@ jobs:
             echo "### Criterios Requeridos:" >> $GITHUB_STEP_SUMMARY
             echo "- ✅ Autor: github-actions[bot]" >> $GITHUB_STEP_SUMMARY
             echo "- ✅ Labels: automated + security" >> $GITHUB_STEP_SUMMARY
-            echo "- ✅ Target: develop" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ Target: master" >> $GITHUB_STEP_SUMMARY
             echo "- ✅ Sin conflictos" >> $GITHUB_STEP_SUMMARY
             echo "- ✅ No es draft" >> $GITHUB_STEP_SUMMARY
             echo "- ✅ Todos los checks pasan" >> $GITHUB_STEP_SUMMARY
