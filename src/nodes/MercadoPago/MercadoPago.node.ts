@@ -11,7 +11,7 @@ import {
 
 import { HTTP_HEADERS } from '../../constants';
 
-import { operations, isOperationName, type HandlerCtx, type MercadoPagoCredentials, type OperationName, type RequestInit } from './operations';
+import { operations, isOperationName, type HandlerCtx, type MercadoPagoCredentials, type SftpCredentials, type OperationName, type RequestInit } from './operations';
 
 /**
  * n8n node: MercadoPago
@@ -43,6 +43,21 @@ export class MercadoPago implements INodeType {
 			{
 				name: 'mercadoPagoApi',
 				required: true,
+			},
+			{
+				name: 'mercadoPagoSftp',
+				required: false,
+				displayOptions: {
+					show: {
+						resource: ['reporting'],
+						operation: [
+							'configureReleaseReport',
+							'editReleaseReportConfig',
+							'configureSettlementReport',
+							'editSettlementReport',
+						],
+					},
+				},
 			},
 		],
 		properties: [
@@ -425,6 +440,7 @@ export class MercadoPago implements INodeType {
 			},
 			{
 				displayName: 'SFTP Info',
+			description: 'SFTP delivery settings. Values here override the SFTP credential field-by-field (useful for dynamic expressions). Leave empty to use credential values.',
 				name: 'sftp_info',
 				type: 'fixedCollection',
 				typeOptions: { multipleValues: false },
@@ -435,11 +451,11 @@ export class MercadoPago implements INodeType {
 						name: 'sftpInfoValues',
 						displayName: 'Connection',
 						values: [
-							{ displayName: 'Server', name: 'server', type: 'string', default: '' },
-							{ displayName: 'Username', name: 'username', type: 'string', default: '' },
-							{ displayName: 'Password', name: 'password', type: 'string', default: '' },
-							{ displayName: 'Remote Dir', name: 'remote_dir', type: 'string', default: '' },
-							{ displayName: 'Port', name: 'port', type: 'number', default: 22 },
+							{ displayName: 'Server', name: 'server', type: 'string', default: '', description: 'Overrides credential value when non-empty' },
+							{ displayName: 'Username', name: 'username', type: 'string', default: '', description: 'Overrides credential value when non-empty' },
+							{ displayName: 'Password', name: 'password', type: 'string', typeOptions: { password: true }, default: '', description: 'Overrides credential value when non-empty' },
+							{ displayName: 'Remote Dir', name: 'remote_dir', type: 'string', default: '', description: 'Overrides credential value when non-empty' },
+							{ displayName: 'Port', name: 'port', type: 'number', default: 0, description: 'Port (0 = use credential value, default: 22)' },
 						],
 					},
 				],
@@ -531,6 +547,14 @@ export class MercadoPago implements INodeType {
 		// Carga credenciales una vez
 		const credentials = (await this.getCredentials('mercadoPagoApi')) as MercadoPagoCredentials;
 
+		// Load optional SFTP credentials (not configured = undefined, expected)
+		let sftpCredentials: SftpCredentials | undefined;
+		try {
+			sftpCredentials = (await this.getCredentials('mercadoPagoSftp')) as unknown as SftpCredentials;
+		} catch {
+			sftpCredentials = undefined;
+		}
+
 		const makeRequest = async <TResponse = unknown>(init: RequestInit): Promise<TResponse> => {
 			const DEFAULT_TIMEOUT_MS = 60_000;
 			const MAX_RETRIES_429 = 2;
@@ -578,6 +602,7 @@ export class MercadoPago implements INodeType {
 			i,
 			get: <T = unknown>(name: string, def?: T) => this.getNodeParameter(name, i, def) as T,
 			credentials,
+			sftpCredentials,
 			helpers: this.helpers,
 			nodeError: (msg: string) => {
 				throw new NodeOperationError(this.getNode(), msg, { itemIndex: i });
