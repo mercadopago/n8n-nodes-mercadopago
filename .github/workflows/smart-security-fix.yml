@@ -321,7 +321,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           branch: ${{ steps.branch.outputs.name }}
-          base: develop  # Tu workflow: feature → develop
+          base: master  # PRs de seguridad van directo a master
           title: "🔒 Security: Auto-fix vulnerabilities (${{ needs.analyze-vulnerabilities.outputs.critical_count }} critical, ${{ needs.analyze-vulnerabilities.outputs.high_count }} high)"
           body: |
             ## 🔒 Automatic Security Fix
@@ -349,7 +349,7 @@ jobs:
             1. [ ] Revisar cambios en `package.json` y `package-lock.json`
             2. [ ] Verificar que las actualizaciones son compatibles
             3. [ ] Aprobar el PR
-            4. [ ] Merge a `develop`
+            4. [ ] Merge a `master`
 
             ### ⚠️ Importante
             Este PR fue creado porque se detectaron vulnerabilidades **críticas o altas**.
