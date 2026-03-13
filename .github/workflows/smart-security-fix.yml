@@ -377,7 +377,7 @@ jobs:
       # Paso 13: Comentar en PR con detalles
       - name: 💬 Comment on PR with details
         if: steps.create_pr.outputs.pull-request-number
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const prNumber = ${{ steps.create_pr.outputs.pull-request-number }};
@@ -410,7 +410,7 @@ jobs:
           (steps.build.outcome == 'failure' ||
            steps.test.outcome == 'failure' ||
            steps.lint.outcome == 'failure')
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             // Determinar qué falló
@@ -476,7 +476,7 @@ jobs:
 
     steps:
       - name: 📝 Create issue for manual review
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             github.rest.issues.create({
