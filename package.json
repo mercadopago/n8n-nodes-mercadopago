@@ -1,6 +1,6 @@
 {
   "name": "@mercadopago/n8n-nodes-mercadopago",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Community node for Mercado Pago",
   "keywords": [
     "n8n-community-node-package",
@@ -45,7 +45,8 @@
   "n8n": {
     "n8nNodesApiVersion": 1,
     "credentials": [
-      "dist/credentials/MercadoPagoApi.credentials.js"
+      "dist/credentials/MercadoPagoApi.credentials.js",
+      "dist/credentials/MercadoPagoSftp.credentials.js"
     ],
     "nodes": [
       "dist/nodes/MercadoPago/MercadoPago.node.js"
@@ -57,9 +58,9 @@
     "@typescript-eslint/eslint-plugin": "8.39.1",
     "@typescript-eslint/parser": "8.39.1",
     "@vitest/coverage-v8": "^3.2.4",
-    "eslint": "^9.34.0",
-    "eslint-plugin-n8n-nodes-base": "1.16.3",
     "esbuild": "^0.25.0",
+    "eslint": "^9.34.0",
+    "eslint-plugin-n8n-nodes-base": "^1.16.6",
     "globals": "^16.4.0",
     "gulp": "5.0.1",
     "jiti": "^2.5.1",
@@ -73,9 +74,9 @@
   "peerDependencies": {
     "n8n-workflow": "*"
   },
-  "dependencies": {},
   "overrides": {
     "esbuild": "^0.25.0",
+    "@isaacs/brace-expansion": ">=5.0.1",
     "form-data": ">=4.0.4",
     "js-yaml": "^4.1.1",
     "lodash": "^4.17.23",
