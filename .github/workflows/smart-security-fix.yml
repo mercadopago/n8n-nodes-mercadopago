@@ -90,7 +90,7 @@ jobs:
       # Paso 2: Setup Node.js
       # Razón: Necesario para ejecutar npm audit
       - name: 🔧 Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '20.15'  # Tu versión especificada en package.json
           cache: 'npm'
@@ -194,7 +194,7 @@ jobs:
 
       # Paso 2: Setup Node.js
       - name: 🔧 Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '20.15'
           cache: 'npm'
