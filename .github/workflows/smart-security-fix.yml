@@ -83,7 +83,7 @@ jobs:
     steps:
       # Paso 1: Checkout del código
       - name: 📥 Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -186,7 +186,7 @@ jobs:
     steps:
       # Paso 1: Checkout
       - name: 📥 Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           # fetch-depth: 0 descarga historial completo (necesario para crear branches)
