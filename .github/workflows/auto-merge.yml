@@ -57,6 +57,12 @@ jobs:
     name: 📋 Evaluar PR para Auto-Merge
     runs-on: ubuntu-latest
 
+    # Solo ejecutar si el PR fue creado por un bot o es dispatch manual
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.actor == 'github-actions[bot]' ||
+      github.actor == 'dependabot[bot]'
+
     # Outputs para siguiente job
     outputs:
       should_merge: ${{ steps.evaluate.outputs.should_merge }}
