@@ -73,7 +73,7 @@ jobs:
       # Paso 1: Obtener información del PR
       - name: 🔍 Get PR information
         id: get-pr
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             let pr;
@@ -126,7 +126,7 @@ jobs:
       - name: 🎯 Evaluate auto-merge criteria
         id: evaluate
         if: steps.get-pr.outputs.number != ''
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const prNumber = parseInt('${{ steps.get-pr.outputs.number }}');
@@ -182,7 +182,7 @@ jobs:
       # Razón: Solo mergear si todos los checks pasan
       - name: ⏳ Wait for checks to complete
         if: steps.evaluate.outputs.should_merge == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const prNumber = parseInt('${{ steps.get-pr.outputs.number }}');
@@ -260,7 +260,7 @@ jobs:
       # Paso 1: Aprobar el PR
       # Razón: GitHub require aprobación antes de merge (por CODEOWNERS)
       - name: ✅ Approve PR
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const prNumber = parseInt('${{ needs.evaluate-pr.outputs.pr_number }}');
@@ -299,7 +299,7 @@ jobs:
       # Paso 2: Mergear el PR
       # Razón: Integrar los cambios a develop automáticamente
       - name: 🔀 Merge PR
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const prNumber = parseInt('${{ needs.evaluate-pr.outputs.pr_number }}');
@@ -373,7 +373,7 @@ jobs:
       # Razón: Mantener el repositorio limpio
       - name: 🗑️ Delete branch
         if: success()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const prNumber = parseInt('${{ needs.evaluate-pr.outputs.pr_number }}');
