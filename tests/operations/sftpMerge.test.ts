@@ -3,134 +3,58 @@ import { parseSftpInfo } from '../../src/nodes/MercadoPago/operations/utils';
 import { makeMockCtx } from '../helpers/mockCtx';
 import { TestContext } from '../types/test-types';
 
-describe('parseSftpInfo merge logic', () => {
-  it('should return undefined when no credential and no params', () => {
+describe('parseSftpInfo (credential-only)', () => {
+  it('should return undefined when no credential is configured', () => {
     const ctx = makeMockCtx({ params: {} }) as TestContext;
     expect(parseSftpInfo(ctx)).toBeUndefined();
   });
 
-  it('should use only credential values when no node params', () => {
+  it('should return full payload from credential', () => {
     const ctx = makeMockCtx({
       params: {},
       sftpCredentials: {
-        server: 'cred.example.com',
-        username: 'cred_user',
-        password: 'cred_pass',
-        remote_dir: '/cred/dir',
+        server: 'sftp.example.com',
+        username: 'user',
+        password: 'pass',
+        remote_dir: '/reports',
         port: 2222,
       },
     }) as TestContext;
 
     expect(parseSftpInfo(ctx)).toEqual({
-      server: 'cred.example.com',
-      username: 'cred_user',
-      password: 'cred_pass',
-      remote_dir: '/cred/dir',
+      server: 'sftp.example.com',
+      username: 'user',
+      password: 'pass',
+      remote_dir: '/reports',
       port: 2222,
     });
   });
 
-  it('should use only node param values when no credential', () => {
+  it('should return only non-empty credential fields (partial credential)', () => {
     const ctx = makeMockCtx({
-      params: {
-        sftp_info: {
-          sftpInfoValues: {
-            server: 'param.example.com',
-            username: 'param_user',
-            password: 'param_pass',
-            remote_dir: '/param/dir',
-            port: 3333,
-          },
-        },
-      },
-    }) as TestContext;
-
-    expect(parseSftpInfo(ctx)).toEqual({
-      server: 'param.example.com',
-      username: 'param_user',
-      password: 'param_pass',
-      remote_dir: '/param/dir',
-      port: 3333,
-    });
-  });
-
-  it('should override credential with non-empty param values (partial override)', () => {
-    const ctx = makeMockCtx({
-      params: {
-        sftp_info: {
-          sftpInfoValues: {
-            server: 'override.example.com',
-            username: '',
-            password: '',
-            remote_dir: '',
-            port: 0,
-          },
-        },
-      },
+      params: {},
       sftpCredentials: {
-        server: 'cred.example.com',
-        username: 'cred_user',
-        password: 'cred_pass',
-        remote_dir: '/cred/dir',
-        port: 2222,
+        server: 'sftp.example.com',
+        username: '',
+        password: '',
+        remote_dir: '',
+        port: 0,
       },
     }) as TestContext;
 
-    const result = parseSftpInfo(ctx);
-    expect(result).toEqual({
-      server: 'override.example.com',
-      username: 'cred_user',
-      password: 'cred_pass',
-      remote_dir: '/cred/dir',
-      port: 2222,
+    expect(parseSftpInfo(ctx)).toEqual({
+      server: 'sftp.example.com',
     });
   });
 
-  it('should override port from credential when param port > 0', () => {
+  it('should return undefined when all credential fields are empty', () => {
     const ctx = makeMockCtx({
-      params: {
-        sftp_info: {
-          sftpInfoValues: { port: 9999 },
-        },
-      },
-      sftpCredentials: { port: 2222 },
-    }) as TestContext;
-
-    const result = parseSftpInfo(ctx);
-    expect(result).toEqual({ port: 9999 });
-  });
-
-  it('should prune fields that are empty after merge', () => {
-    const ctx = makeMockCtx({
-      params: {
-        sftp_info: {
-          sftpInfoValues: {
-            server: '  ',
-            username: '',
-          },
-        },
-      },
+      params: {},
       sftpCredentials: {
         server: '',
         username: '  ',
-      },
-    }) as TestContext;
-
-    expect(parseSftpInfo(ctx)).toBeUndefined();
-  });
-
-  it('should return undefined when both sources produce empty values', () => {
-    const ctx = makeMockCtx({
-      params: {
-        sftp_info: {
-          sftpInfoValues: {
-            server: '',
-            port: 0,
-          },
-        },
-      },
-      sftpCredentials: {
-        server: '',
+        password: '',
+        remote_dir: '',
         port: 0,
       },
     }) as TestContext;
@@ -138,7 +62,7 @@ describe('parseSftpInfo merge logic', () => {
     expect(parseSftpInfo(ctx)).toBeUndefined();
   });
 
-  it('should preserve spaces in credential password', () => {
+  it('should preserve spaces in credential password (no trim)', () => {
     const ctx = makeMockCtx({
       params: {},
       sftpCredentials: {
@@ -146,25 +70,48 @@ describe('parseSftpInfo merge logic', () => {
       },
     }) as TestContext;
 
-    const result = parseSftpInfo(ctx);
-    expect(result).toEqual({ password: '  spaced pass  ' });
+    expect(parseSftpInfo(ctx)).toEqual({ password: '  spaced pass  ' });
   });
 
-  it('should override password from credential without trimming', () => {
+  it('should omit port when 0 or undefined', () => {
     const ctx = makeMockCtx({
-      params: {
-        sftp_info: {
-          sftpInfoValues: {
-            password: ' new pass ',
-          },
-        },
-      },
+      params: {},
       sftpCredentials: {
-        password: 'old_pass',
+        server: 'sftp.example.com',
+        port: 0,
       },
     }) as TestContext;
 
     const result = parseSftpInfo(ctx);
-    expect(result).toEqual({ password: ' new pass ' });
+    expect(result).toEqual({ server: 'sftp.example.com' });
+    expect(result?.port).toBeUndefined();
+  });
+
+  it('should include port when positive', () => {
+    const ctx = makeMockCtx({
+      params: {},
+      sftpCredentials: {
+        port: 9999,
+      },
+    }) as TestContext;
+
+    expect(parseSftpInfo(ctx)).toEqual({ port: 9999 });
+  });
+
+  it('should trim string fields from credential', () => {
+    const ctx = makeMockCtx({
+      params: {},
+      sftpCredentials: {
+        server: '  sftp.example.com  ',
+        username: '  user  ',
+        remote_dir: '  /reports  ',
+      },
+    }) as TestContext;
+
+    expect(parseSftpInfo(ctx)).toEqual({
+      server: 'sftp.example.com',
+      username: 'user',
+      remote_dir: '/reports',
+    });
   });
 });
