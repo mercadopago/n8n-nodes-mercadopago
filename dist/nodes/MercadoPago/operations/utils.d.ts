@@ -27,9 +27,6 @@ export type SftpInfoValues = {
     remote_dir?: string;
     port?: number;
 };
-export type SftpInfoParam = {
-    sftpInfoValues?: SftpInfoValues;
-};
 export type EmailValue = {
     value?: string;
 };
@@ -57,11 +54,12 @@ export declare function parseFileNamePrefix(ctx: HandlerCtx, paramName?: string)
  */
 export declare function parseFrequency(ctx: HandlerCtx, paramName?: string): ParsedFrequency;
 /**
- * Parses the sftp_info collection from node UI.
- * Returns undefined if no valid SFTP fields are provided.
- * Prunes empty/undefined fields from the result.
+ * Builds the sftp_info payload from the SFTP credential only.
+ *
+ * For password: no trim is applied (passwords may contain leading/trailing spaces).
+ * Returns undefined when no credential is configured or all fields are empty.
  */
-export declare function parseSftpInfo(ctx: HandlerCtx, paramName?: string): SftpInfoValues | undefined;
+export declare function parseSftpInfo(ctx: HandlerCtx): SftpInfoValues | undefined;
 /**
  * Parses an email list from a notification_email_list collection.
  * Returns an array of non-empty email strings.

@@ -134,30 +134,26 @@ describe('configureReleaseReport operation', () => {
     expect(result).toEqual({ id: 'config_123' });
   });
 
-  it('should include sftp_info when provided', async () => {
+  it('should include sftp_info from credential when provided', async () => {
     ctx = makeMockCtx({
-      params: {
-        ...baseParams,
-        sftp_info: {
-          sftpInfoValues: {
-            server: 'sftp.example.com',
-            username: 'user',
-            password: 'pass',
-            port: 22,
-            remote_dir: '/reports'
-          }
-        }
+      params: { ...baseParams },
+      sftpCredentials: {
+        server: 'sftp.example.com',
+        username: 'user',
+        password: 'pass',
+        port: 22,
+        remote_dir: '/reports',
       },
       requestImpl: async (init) => {
-        expect(init.body.sftp_info).toMatchObject({
+        expect(init.body.sftp_info).toEqual({
           server: 'sftp.example.com',
           username: 'user',
           password: 'pass',
           port: 22,
-          remote_dir: '/reports'
+          remote_dir: '/reports',
         });
         return { id: 'config_123' };
-      }
+      },
     }) as TestContext;
 
     const result = await configureReleaseReport(ctx);
@@ -200,61 +196,11 @@ describe('configureReleaseReport operation', () => {
     expect(result).toEqual({ id: 'config_123' });
   });
 
-  it('should use SFTP credential values when no node params provided', async () => {
+  it('should omit sftp_info when no credential is configured', async () => {
     ctx = makeMockCtx({
       params: { ...baseParams },
-      sftpCredentials: {
-        server: 'cred-sftp.example.com',
-        username: 'cred_user',
-        password: 'cred_pass',
-        remote_dir: '/cred/reports',
-        port: 2222,
-      },
       requestImpl: async (init) => {
-        expect(init.body.sftp_info).toEqual({
-          server: 'cred-sftp.example.com',
-          username: 'cred_user',
-          password: 'cred_pass',
-          remote_dir: '/cred/reports',
-          port: 2222,
-        });
-        return { id: 'config_123' };
-      },
-    }) as TestContext;
-
-    const result = await configureReleaseReport(ctx);
-    expect(result).toEqual({ id: 'config_123' });
-  });
-
-  it('should merge SFTP credential with partial node param overrides', async () => {
-    ctx = makeMockCtx({
-      params: {
-        ...baseParams,
-        sftp_info: {
-          sftpInfoValues: {
-            server: 'override.example.com',
-            username: '',
-            password: '',
-            remote_dir: '',
-            port: 0,
-          },
-        },
-      },
-      sftpCredentials: {
-        server: 'cred.example.com',
-        username: 'cred_user',
-        password: 'cred_pass',
-        remote_dir: '/cred/dir',
-        port: 2222,
-      },
-      requestImpl: async (init) => {
-        expect(init.body.sftp_info).toEqual({
-          server: 'override.example.com',
-          username: 'cred_user',
-          password: 'cred_pass',
-          remote_dir: '/cred/dir',
-          port: 2222,
-        });
+        expect(init.body.sftp_info).toBeUndefined();
         return { id: 'config_123' };
       },
     }) as TestContext;
