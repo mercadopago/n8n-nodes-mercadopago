@@ -18,7 +18,7 @@ name: 🤖 Auto-Merge Security PRs
 # ============================================
 on:
   # Se ejecuta cuando un PR recibe nuevo check o review
-  pull_request_target:
+  pull_request:
     types:
       - opened          # PR nuevo
       - reopened        # PR reabierto
@@ -88,7 +88,7 @@ jobs:
               });
               pr = pr.data;
             }
-            // Si es pull_request_target, usar el PR del evento
+            // Si es pull_request, usar el PR del evento
             else if (context.payload.pull_request) {
               pr = context.payload.pull_request;
             }
