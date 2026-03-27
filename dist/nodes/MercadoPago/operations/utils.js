@@ -69,30 +69,32 @@ function parseFrequency(ctx, paramName = 'frequency') {
     return { hour, value, type };
 }
 /**
- * Parses the sftp_info collection from node UI.
- * Returns undefined if no valid SFTP fields are provided.
- * Prunes empty/undefined fields from the result.
+ * Builds the sftp_info payload from the SFTP credential only.
+ *
+ * For password: no trim is applied (passwords may contain leading/trailing spaces).
+ * Returns undefined when no credential is configured or all fields are empty.
  */
-function parseSftpInfo(ctx, paramName = 'sftp_info') {
-    const sftpInfo = ctx.get(paramName, undefined);
-    const sftp = sftpInfo?.sftpInfoValues;
-    if (!sftp || !Object.keys(sftp).length) {
+function parseSftpInfo(ctx) {
+    const cred = ctx.sftpCredentials;
+    if (!cred)
         return undefined;
-    }
-    const sftpPayload = {
-        server: (sftp.server ?? '').toString().trim() || undefined,
-        password: (sftp.password ?? '').toString() || undefined,
-        remote_dir: (sftp.remote_dir ?? '').toString().trim() || undefined,
-        port: typeof sftp.port === 'number' ? sftp.port : undefined,
-        username: (sftp.username ?? '').toString().trim() || undefined,
-    };
-    // Remove empty keys
-    Object.keys(sftpPayload).forEach((k) => {
-        const v = sftpPayload[k];
-        if (v === undefined || v === '') {
-            delete sftpPayload[k];
-        }
-    });
+    const sftpPayload = {};
+    const server = (cred.server ?? '').toString().trim();
+    if (server)
+        sftpPayload.server = server;
+    const username = (cred.username ?? '').toString().trim();
+    if (username)
+        sftpPayload.username = username;
+    // No trim on password — may contain intentional spaces
+    const password = (cred.password ?? '').toString();
+    if (password)
+        sftpPayload.password = password;
+    const remote_dir = (cred.remote_dir ?? '').toString().trim();
+    if (remote_dir)
+        sftpPayload.remote_dir = remote_dir;
+    const port = typeof cred.port === 'number' && cred.port > 0 ? cred.port : undefined;
+    if (port !== undefined)
+        sftpPayload.port = port;
     return Object.keys(sftpPayload).length ? sftpPayload : undefined;
 }
 /**
