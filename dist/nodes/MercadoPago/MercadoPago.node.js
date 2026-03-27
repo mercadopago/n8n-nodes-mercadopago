@@ -37,6 +37,21 @@ class MercadoPago {
                     name: 'mercadoPagoApi',
                     required: true,
                 },
+                {
+                    name: 'mercadoPagoSftp',
+                    required: false,
+                    displayOptions: {
+                        show: {
+                            resource: ['reporting'],
+                            operation: [
+                                'configureReleaseReport',
+                                'editReleaseReportConfig',
+                                'configureSettlementReport',
+                                'editSettlementReport',
+                            ],
+                        },
+                    },
+                },
             ],
             properties: [
                 // Selector de recurso (agrupador)
@@ -413,27 +428,6 @@ class MercadoPago {
                     ],
                 },
                 {
-                    displayName: 'SFTP Info',
-                    name: 'sftp_info',
-                    type: 'fixedCollection',
-                    typeOptions: { multipleValues: false },
-                    default: {},
-                    displayOptions: { show: { operation: ['configureReleaseReport', 'editReleaseReportConfig', 'configureSettlementReport', 'editSettlementReport'] } },
-                    options: [
-                        {
-                            name: 'sftpInfoValues',
-                            displayName: 'Connection',
-                            values: [
-                                { displayName: 'Server', name: 'server', type: 'string', default: '' },
-                                { displayName: 'Username', name: 'username', type: 'string', default: '' },
-                                { displayName: 'Password', name: 'password', type: 'string', default: '' },
-                                { displayName: 'Remote Dir', name: 'remote_dir', type: 'string', default: '' },
-                                { displayName: 'Port', name: 'port', type: 'number', default: 22 },
-                            ],
-                        },
-                    ],
-                },
-                {
                     displayName: 'Additional Fields',
                     name: 'configAdditionalFields',
                     type: 'collection',
@@ -517,6 +511,14 @@ class MercadoPago {
         const op = (0, operations_1.isOperationName)(opRaw) ? opRaw : undefined;
         // Carga credenciales una vez
         const credentials = (await this.getCredentials('mercadoPagoApi'));
+        // Load optional SFTP credentials (not configured = undefined, expected)
+        let sftpCredentials;
+        try {
+            sftpCredentials = (await this.getCredentials('mercadoPagoSftp'));
+        }
+        catch {
+            sftpCredentials = undefined;
+        }
         const makeRequest = async (init) => {
             const DEFAULT_TIMEOUT_MS = 60000;
             const MAX_RETRIES_429 = 2;
@@ -562,6 +564,7 @@ class MercadoPago {
             i,
             get: (name, def) => this.getNodeParameter(name, i, def),
             credentials,
+            sftpCredentials,
             helpers: this.helpers,
             nodeError: (msg) => {
                 throw new n8n_workflow_1.NodeOperationError(this.getNode(), msg, { itemIndex: i });
