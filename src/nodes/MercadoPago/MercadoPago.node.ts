@@ -439,28 +439,6 @@ export class MercadoPago implements INodeType {
 				],
 			},
 			{
-				displayName: 'SFTP Info',
-			description: 'SFTP delivery settings. Values here override the SFTP credential field-by-field (useful for dynamic expressions). Leave empty to use credential values.',
-				name: 'sftp_info',
-				type: 'fixedCollection',
-				typeOptions: { multipleValues: false },
-				default: {},
-				displayOptions: { show: { operation: ['configureReleaseReport', 'editReleaseReportConfig', 'configureSettlementReport', 'editSettlementReport'] } },
-				options: [
-					{
-						name: 'sftpInfoValues',
-						displayName: 'Connection',
-						values: [
-							{ displayName: 'Server', name: 'server', type: 'string', default: '', description: 'Overrides credential value when non-empty' },
-							{ displayName: 'Username', name: 'username', type: 'string', default: '', description: 'Overrides credential value when non-empty' },
-							{ displayName: 'Password', name: 'password', type: 'string', typeOptions: { password: true }, default: '', description: 'Overrides credential value when non-empty' },
-							{ displayName: 'Remote Dir', name: 'remote_dir', type: 'string', default: '', description: 'Overrides credential value when non-empty' },
-							{ displayName: 'Port', name: 'port', type: 'number', default: 0, description: 'Port (0 = use credential value, default: 22)' },
-						],
-					},
-				],
-			},
-			{
 				displayName: 'Additional Fields',
 				name: 'configAdditionalFields',
 				type: 'collection',

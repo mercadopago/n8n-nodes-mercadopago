@@ -155,31 +155,25 @@ describe('editSettlementReport operation', () => {
     expect(result).toEqual({ id: 'config_settlement_456', updated: true });
   });
 
-  it('should include sftp_info when provided and prune empty values', async () => {
+  it('should include sftp_info from credential and prune empty values', async () => {
     ctx = makeMockCtx({
-      params: {
-        ...baseParams,
-        sftp_info: {
-          sftpInfoValues: {
-            server: 'sftp.updated.com',
-            username: 'updated_user',
-            password: 'updated_pass',
-            port: 22,
-            remote_dir: '' // Empty value should be pruned
-          }
-        }
+      params: { ...baseParams },
+      sftpCredentials: {
+        server: 'sftp.updated.com',
+        username: 'updated_user',
+        password: 'updated_pass',
+        port: 22,
+        remote_dir: '',
       },
       requestImpl: async (init) => {
-        expect(init.body.sftp_info).toMatchObject({
+        expect(init.body.sftp_info).toEqual({
           server: 'sftp.updated.com',
           username: 'updated_user',
           password: 'updated_pass',
-          port: 22
-          // remote_dir should be pruned
+          port: 22,
         });
-        expect(init.body.sftp_info.remote_dir).toBeUndefined();
         return { id: 'config_settlement_456', updated: true };
-      }
+      },
     }) as TestContext;
 
     const result = await editSettlementReport(ctx);
@@ -216,61 +210,11 @@ describe('editSettlementReport operation', () => {
     expect(result).toEqual({ id: 'config_settlement_456', updated: true });
   });
 
-  it('should use SFTP credential values when no node params provided', async () => {
+  it('should omit sftp_info when no credential is configured', async () => {
     ctx = makeMockCtx({
       params: { ...baseParams },
-      sftpCredentials: {
-        server: 'cred-sftp.updated.com',
-        username: 'cred_user',
-        password: 'cred_pass',
-        remote_dir: '/cred/settlement',
-        port: 2222,
-      },
       requestImpl: async (init) => {
-        expect(init.body.sftp_info).toEqual({
-          server: 'cred-sftp.updated.com',
-          username: 'cred_user',
-          password: 'cred_pass',
-          remote_dir: '/cred/settlement',
-          port: 2222,
-        });
-        return { id: 'config_settlement_456', updated: true };
-      },
-    }) as TestContext;
-
-    const result = await editSettlementReport(ctx);
-    expect(result).toEqual({ id: 'config_settlement_456', updated: true });
-  });
-
-  it('should merge SFTP credential with partial node param overrides', async () => {
-    ctx = makeMockCtx({
-      params: {
-        ...baseParams,
-        sftp_info: {
-          sftpInfoValues: {
-            server: 'override.updated.com',
-            username: '',
-            password: '',
-            remote_dir: '',
-            port: 0,
-          },
-        },
-      },
-      sftpCredentials: {
-        server: 'cred.updated.com',
-        username: 'cred_user',
-        password: 'cred_pass',
-        remote_dir: '/cred/dir',
-        port: 2222,
-      },
-      requestImpl: async (init) => {
-        expect(init.body.sftp_info).toEqual({
-          server: 'override.updated.com',
-          username: 'cred_user',
-          password: 'cred_pass',
-          remote_dir: '/cred/dir',
-          port: 2222,
-        });
+        expect(init.body.sftp_info).toBeUndefined();
         return { id: 'config_settlement_456', updated: true };
       },
     }) as TestContext;
