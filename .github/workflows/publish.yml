@@ -1,0 +1,29 @@
+name: Publish to npm
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.15'
+          registry-url: 'https://registry.npmjs.org'
+
+      - run: npm ci
+      - run: npm run build
+      - run: npm run test:unit
+      - run: npm run lint
+
+      # Inject the real Platform ID into the compiled dist before publishing
+      - name: Inject Platform ID
+        run: sed -i "s/'platform-id'/'${{ secrets.X_PLATFORM_ID }}'/g" dist/constants.js
+
+      - run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
