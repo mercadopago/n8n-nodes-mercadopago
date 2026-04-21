@@ -7,6 +7,10 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
@@ -24,6 +28,6 @@ jobs:
       - name: Inject Platform ID
         run: sed -i "s/'platform-id'/'${{ secrets.X_PLATFORM_ID }}'/g" dist/constants.js
 
-      - run: npm publish --access public
+      - run: npm publish --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
