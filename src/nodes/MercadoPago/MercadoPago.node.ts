@@ -535,7 +535,7 @@ export class MercadoPago implements INodeType {
 
 		const makeRequest = async <TResponse = unknown>(init: RequestInit): Promise<TResponse> => {
 			const DEFAULT_TIMEOUT_MS = 60_000;
-			const MAX_RETRIES_429 = 2;
+			const MAX_RETRIES = 2;
 			const isJson = init.json !== undefined ? init.json : true;
 			const options: IRequestOptions = {
 				method: init.method as IRequestOptions['method'],
@@ -560,9 +560,34 @@ export class MercadoPago implements INodeType {
 				try {
 					return (await this.helpers.request(options)) as TResponse;
 				} catch (error) {
-					const err = error as { statusCode?: number; response?: { status?: number; headers?: Record<string, string> }; headers?: Record<string, string> };
+					const err = error as { statusCode?: number; response?: { status?: number; headers?: Record<string, string>; body?: string }; headers?: Record<string, string>; body?: string };
 					const status = err?.statusCode ?? err?.response?.status;
-					if (status !== 429 || attempt >= MAX_RETRIES_429) {
+					const isRetryable = status === 429 || (status !== undefined && status >= 500 && status < 600);
+					if (!isRetryable || attempt >= MAX_RETRIES) {
+						// Parse MercadoPago API error response for a clearer message
+						let mpMessage = '';
+						try {
+							const rawBody = err?.response?.body ?? err?.body;
+							if (typeof rawBody === 'string') {
+								const parsed = JSON.parse(rawBody) as { message?: string; error?: string; cause?: unknown[] };
+								const parts: string[] = [];
+								if (parsed.error) parts.push(parsed.error);
+								if (parsed.message) parts.push(parsed.message);
+								if (Array.isArray(parsed.cause) && parsed.cause.length) {
+									parts.push(`Causes: ${parsed.cause.map((c) => (typeof c === 'string' ? c : JSON.stringify(c))).join(', ')}`);
+								}
+								mpMessage = parts.join(' - ');
+							}
+						} catch {
+							// If body parsing fails, use original error
+						}
+						if (mpMessage) {
+							throw new NodeOperationError(
+								this.getNode(),
+								`MercadoPago API error (${status ?? 'unknown'}): ${mpMessage}`,
+								{ description: (error as Error).message },
+							);
+						}
 						throw error;
 					}
 					attempt++;
