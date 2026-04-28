@@ -317,91 +317,49 @@ jobs:
           steps.test.outcome == 'success' &&
           steps.lint.outcome == 'success'
         id: create_pr
-        uses: peter-evans/create-pull-request@v8
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ steps.branch.outputs.name }}
-          base: master  # PRs de seguridad van directo a master
-          title: "🔒 Security: Auto-fix vulnerabilities (${{ needs.analyze-vulnerabilities.outputs.critical_count }} critical, ${{ needs.analyze-vulnerabilities.outputs.high_count }} high)"
-          body: |
-            ## 🔒 Automatic Security Fix
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_URL=$(gh pr create \
+            --base master \
+            --head "${{ steps.branch.outputs.name }}" \
+            --title "🔒 Security: Auto-fix vulnerabilities (${{ needs.analyze-vulnerabilities.outputs.critical_count }} critical, ${{ needs.analyze-vulnerabilities.outputs.high_count }} high)" \
+            --body "$(cat <<'PREOF'
+          ## 🔒 Automatic Security Fix
 
-            Este PR fue generado automáticamente por el sistema de seguridad híbrido en respuesta a vulnerabilidades detectadas por Dependabot.
+          Este PR fue generado automaticamente por el sistema de seguridad hibrido en respuesta a vulnerabilidades detectadas por Dependabot.
 
-            ### 📊 Vulnerabilidades Detectadas
-            - 🔴 **Critical**: ${{ needs.analyze-vulnerabilities.outputs.critical_count }}
-            - 🟠 **High**: ${{ needs.analyze-vulnerabilities.outputs.high_count }}
+          ### 📊 Vulnerabilidades Detectadas
+          - 🔴 **Critical**: ${{ needs.analyze-vulnerabilities.outputs.critical_count }}
+          - 🟠 **High**: ${{ needs.analyze-vulnerabilities.outputs.high_count }}
 
-            ### ✅ Verificaciones Automáticas
-            - [x] Build exitoso
-            - [x] Tests unitarios pasando
-            - [x] Lint pasando
-            - [x] Dependencias actualizadas
+          ### ✅ Verificaciones Automaticas
+          - [x] Build exitoso
+          - [x] Tests unitarios pasando
+          - [x] Lint pasando
+          - [x] Dependencias actualizadas
 
-            ### 🔍 Cambios Realizados
-            Las siguientes dependencias fueron actualizadas para resolver vulnerabilidades:
+          ### 📋 Proximos Pasos
+          1. [ ] Revisar cambios en `package.json` y `package-lock.json`
+          2. [ ] Verificar que las actualizaciones son compatibles
+          3. [ ] Aprobar el PR
+          4. [ ] Merge a `master`
 
-            ```bash
-            npm audit fix
-            ```
+          ---
+          🤖 Generado automaticamente por GitHub Actions
+          PREOF
+          )" \
+            --label "security" \
+            --label "automated" \
+            --label "dependencies" \
+            --reviewer "samhermeli" \
+            --reviewer "Harievilozanini" \
+            --reviewer "franciscoramirezadasme" \
+            --assignee "samhermeli")
 
-            ### 📋 Próximos Pasos
-            1. [ ] Revisar cambios en `package.json` y `package-lock.json`
-            2. [ ] Verificar que las actualizaciones son compatibles
-            3. [ ] Aprobar el PR
-            4. [ ] Merge a `master`
-
-            ### ⚠️ Importante
-            Este PR fue creado porque se detectaron vulnerabilidades **críticas o altas**.
-            Se recomienda revisar y aprobar lo antes posible.
-
-            ### 🤖 Automatización
-            - Branch: `${{ steps.branch.outputs.name }}`
-            - Workflow: [Smart Security Fix](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-            - Ejecutado: ${{ github.event_name }}
-
-            ---
-            🤖 Generado automáticamente por GitHub Actions
-
-          labels: |
-            security
-            automated
-            dependencies
-            priority-high
-          reviewers: |
-            samhermeli
-            Harievilozanini
-          assignees: |
-            samhermeli
-
-      # Paso 13: Comentar en PR con detalles
-      - name: 💬 Comment on PR with details
-        if: steps.create_pr.outputs.pull-request-number
-        uses: actions/github-script@v9
-        with:
-          script: |
-            const prNumber = ${{ steps.create_pr.outputs.pull-request-number }};
-
-            github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: prNumber,
-              body: `### 📊 Análisis Detallado
-
-            | Severidad | Cantidad |
-            |-----------|----------|
-            | 🔴 Critical | ${{ needs.analyze-vulnerabilities.outputs.critical_count }} |
-            | 🟠 High | ${{ needs.analyze-vulnerabilities.outputs.high_count }} |
-
-            **Recomendación**: Revisar y aprobar este PR lo antes posible debido a la severidad de las vulnerabilidades.
-
-            Para ver el reporte completo:
-            \`\`\`bash
-            npm audit
-            \`\`\`
-
-            🤖 Este comentario fue generado automáticamente.`
-            });
+          PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "✅ PR creado: $PR_URL"
 
       # Paso 14: Notificar si algo falló
       - name: 🚨 Notify on failure
