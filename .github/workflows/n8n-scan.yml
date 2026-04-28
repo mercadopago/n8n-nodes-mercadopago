@@ -1,0 +1,18 @@
+name: n8n Community Node Scan
+
+on:
+  workflow_dispatch:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20.15'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Run n8n community package scan
+        run: npx @n8n/scan-community-package '@mercadopago/n8n-nodes-mercadopago'
