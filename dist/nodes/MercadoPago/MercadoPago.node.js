@@ -521,7 +521,7 @@ class MercadoPago {
         }
         const makeRequest = async (init) => {
             const DEFAULT_TIMEOUT_MS = 60000;
-            const MAX_RETRIES_429 = 2;
+            const MAX_RETRIES = 2;
             const isJson = init.json !== undefined ? init.json : true;
             const options = {
                 method: init.method,
@@ -547,7 +547,31 @@ class MercadoPago {
                 catch (error) {
                     const err = error;
                     const status = err?.statusCode ?? err?.response?.status;
-                    if (status !== 429 || attempt >= MAX_RETRIES_429) {
+                    const isRetryable = status === 429 || (status !== undefined && status >= 500 && status < 600);
+                    if (!isRetryable || attempt >= MAX_RETRIES) {
+                        // Parse MercadoPago API error response for a clearer message
+                        let mpMessage = '';
+                        try {
+                            const rawBody = err?.response?.body ?? err?.body;
+                            if (typeof rawBody === 'string') {
+                                const parsed = JSON.parse(rawBody);
+                                const parts = [];
+                                if (parsed.error)
+                                    parts.push(parsed.error);
+                                if (parsed.message)
+                                    parts.push(parsed.message);
+                                if (Array.isArray(parsed.cause) && parsed.cause.length) {
+                                    parts.push(`Causes: ${parsed.cause.map((c) => (typeof c === 'string' ? c : JSON.stringify(c))).join(', ')}`);
+                                }
+                                mpMessage = parts.join(' - ');
+                            }
+                        }
+                        catch {
+                            // If body parsing fails, use original error
+                        }
+                        if (mpMessage) {
+                            throw new n8n_workflow_1.NodeOperationError(this.getNode(), `MercadoPago API error (${status ?? 'unknown'}): ${mpMessage}`, { description: error.message });
+                        }
                         throw error;
                     }
                     attempt++;
