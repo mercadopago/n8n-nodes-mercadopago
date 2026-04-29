@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MercadoPago = void 0;
 // src/nodes/mercadopago/MercadoPago.node.ts
+const promises_1 = require("node:timers/promises");
 const n8n_workflow_1 = require("n8n-workflow");
 const constants_1 = require("../../constants");
 const operations_1 = require("./operations");
@@ -528,9 +529,8 @@ class MercadoPago {
                 url: init.url,
                 qs: init.qs,
                 body: init.body,
-                form: init.form,
                 json: isJson,
-                timeout: (init.timeoutMs ?? DEFAULT_TIMEOUT_MS),
+                timeout: init.timeoutMs ?? DEFAULT_TIMEOUT_MS,
                 headers: {
                     ...(isJson ? { 'Content-Type': 'application/json' } : {}),
                     Authorization: `Bearer ${credentials.accessToken}`,
@@ -538,11 +538,10 @@ class MercadoPago {
                     ...(init.headers ?? {}),
                 },
             };
-            const sleep = async (ms) => await new Promise((resolve) => setTimeout(resolve, ms));
             let attempt = 0;
             while (true) {
                 try {
-                    return (await this.helpers.request(options));
+                    return (await this.helpers.httpRequest(options));
                 }
                 catch (error) {
                     const err = error;
@@ -580,7 +579,7 @@ class MercadoPago {
                     const waitMs = Number.isFinite(retryAfterSeconds)
                         ? Math.max(0, retryAfterSeconds * 1000)
                         : 1000 * attempt;
-                    await sleep(waitMs);
+                    await (0, promises_1.setTimeout)(waitMs);
                 }
             }
         };
