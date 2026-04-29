@@ -1,11 +1,12 @@
 // src/nodes/mercadopago/MercadoPago.node.ts
+import { setTimeout as sleep } from 'node:timers/promises';
 import {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	type NodeConnectionType,
-	IRequestOptions,
+	type IHttpRequestOptions,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -537,14 +538,13 @@ export class MercadoPago implements INodeType {
 			const DEFAULT_TIMEOUT_MS = 60_000;
 			const MAX_RETRIES = 2;
 			const isJson = init.json !== undefined ? init.json : true;
-			const options: IRequestOptions = {
-				method: init.method as IRequestOptions['method'],
+			const options: IHttpRequestOptions = {
+				method: init.method,
 				url: init.url,
-				qs: init.qs as unknown as IRequestOptions['qs'],
-				body: init.body as unknown as IRequestOptions['body'],
-				form: init.form as unknown as IRequestOptions['form'],
+				qs: init.qs as IHttpRequestOptions['qs'],
+				body: init.body as IHttpRequestOptions['body'],
 				json: isJson,
-				timeout: (init.timeoutMs ?? DEFAULT_TIMEOUT_MS) as unknown as IRequestOptions['timeout'],
+				timeout: init.timeoutMs ?? DEFAULT_TIMEOUT_MS,
 				headers: {
 					...(isJson ? { 'Content-Type': 'application/json' } : {}),
 					Authorization: `Bearer ${credentials.accessToken}`,
@@ -553,12 +553,10 @@ export class MercadoPago implements INodeType {
 				},
 			};
 
-			const sleep = async (ms: number) => await new Promise((resolve) => setTimeout(resolve, ms));
-
 			let attempt = 0;
 			while (true) {
 				try {
-					return (await this.helpers.request(options)) as TResponse;
+					return (await this.helpers.httpRequest(options)) as TResponse;
 				} catch (error) {
 					const err = error as { statusCode?: number; response?: { status?: number; headers?: Record<string, string>; body?: string }; headers?: Record<string, string>; body?: string };
 					const status = err?.statusCode ?? err?.response?.status;
