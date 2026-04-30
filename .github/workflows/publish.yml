@@ -33,5 +33,3 @@ jobs:
         run: sed -i "s/'platform-id'/'${{ secrets.X_PLATFORM_ID }}'/g" dist/constants.js
 
       - run: npm publish --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
