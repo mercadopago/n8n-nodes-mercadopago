@@ -4,13 +4,14 @@ on:
   release:
     types: [published]
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   publish:
     runs-on: ubuntu-latest
     environment: release
-    permissions:
-      contents: read
-      id-token: write
     steps:
       - uses: actions/checkout@v6
 
@@ -32,4 +33,5 @@ jobs:
       - name: Inject Platform ID
         run: sed -i "s/'platform-id'/'${{ secrets.X_PLATFORM_ID }}'/g" dist/constants.js
 
-      - run: npm publish --access public --provenance
+      # Skip prepublishOnly to avoid re-running build which overwrites the sed above
+      - run: npm publish --ignore-scripts
