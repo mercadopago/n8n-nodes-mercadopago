@@ -1,18 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MercadoPagoApi = void 0;
-/**
- * MercadoPagoApi Credential
- *
- * This credential stores the Mercado Pago Access Token (Bearer) used by the
- * MercadoPago node to authenticate requests against Mercado Pago APIs.
- *
- * How to use:
- * - Create a credential in n8n with your Mercado Pago Access Token.
- * - Select this credential in the MercadoPago node before executing operations.
- *
- * Reference: https://www.mercadopago.com.ar/developers/es
- */
 class MercadoPagoApi {
     constructor() {
         this.name = 'mercadoPagoApi';
@@ -31,6 +19,16 @@ class MercadoPagoApi {
                 description: 'The MercadoPago access token',
             },
         ];
+        this.test = {
+            request: {
+                baseURL: 'https://api.mercadopago.com',
+                url: '/v1/payment_methods',
+                method: 'GET',
+                headers: {
+                    Authorization: '=Bearer {{$credentials.accessToken}}',
+                },
+            },
+        };
     }
 }
 exports.MercadoPagoApi = MercadoPagoApi;

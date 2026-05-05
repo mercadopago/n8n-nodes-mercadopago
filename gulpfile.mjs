@@ -10,6 +10,10 @@ const paths = {
     src: 'src/nodes/**/*.svg',
     dest: 'dist/nodes',
   },
+  nodeJsons: {
+    src: 'src/nodes/**/*.json',
+    dest: 'dist/nodes',
+  },
 };
 
 function copyIcons() {
@@ -20,8 +24,10 @@ function copyNodeSvgs() {
   return gulp.src(paths.nodeSvgs.src).pipe(gulp.dest(paths.nodeSvgs.dest));
 }
 
-// Definir y exportar la tarea build:icons
-export const buildIcons = gulp.series(copyIcons, copyNodeSvgs);
+function copyNodeJsons() {
+  return gulp.src(paths.nodeJsons.src).pipe(gulp.dest(paths.nodeJsons.dest));
+}
 
-// Registrar la tarea con el nombre correcto
+export const buildIcons = gulp.series(copyIcons, copyNodeSvgs, copyNodeJsons);
+
 gulp.task('build:icons', buildIcons);
