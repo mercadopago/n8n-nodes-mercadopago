@@ -1,6 +1,6 @@
 {
   "name": "@mercadopago/n8n-nodes-mercadopago",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "Community node for Mercado Pago",
   "keywords": [
     "n8n-community-node-package",
@@ -23,7 +23,7 @@
   "engines": {
     "node": ">=20.15"
   },
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
     "build": "npx rimraf dist && tsc && npx tsx --tsconfig tsconfig.json ./node_modules/gulp/bin/gulp.js -f gulpfile.mjs build:icons",
     "dev": "tsc --watch",
