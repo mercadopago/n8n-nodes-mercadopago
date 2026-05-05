@@ -1,4 +1,5 @@
 import {
+	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
@@ -22,14 +23,20 @@ export class MercadoPagoApi implements ICredentialType {
 		},
 	];
 
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			headers: {
+				Authorization: '=Bearer {{$credentials.accessToken}}',
+			},
+		},
+	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://api.mercadopago.com',
 			url: '/v1/payment_methods',
 			method: 'GET',
-			headers: {
-				Authorization: '=Bearer {{$credentials.accessToken}}',
-			},
 		},
 	};
 }
