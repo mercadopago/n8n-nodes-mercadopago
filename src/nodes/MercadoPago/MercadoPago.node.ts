@@ -1,5 +1,4 @@
 // src/nodes/mercadopago/MercadoPago.node.ts
-import { setTimeout as sleep } from 'node:timers/promises';
 import {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -536,7 +535,6 @@ export class MercadoPago implements INodeType {
 
 		const makeRequest = async <TResponse = unknown>(init: RequestInit): Promise<TResponse> => {
 			const DEFAULT_TIMEOUT_MS = 60_000;
-			const MAX_RETRIES = 2;
 			const isJson = init.json !== undefined ? init.json : true;
 			const options: IHttpRequestOptions = {
 				method: init.method,
@@ -553,49 +551,35 @@ export class MercadoPago implements INodeType {
 				},
 			};
 
-			let attempt = 0;
-			while (true) {
+			try {
+				return (await this.helpers.httpRequest(options)) as TResponse;
+			} catch (error) {
+				const err = error as { statusCode?: number; response?: { status?: number; body?: string }; body?: string };
+				const status = err?.statusCode ?? err?.response?.status;
+				let mpMessage = '';
 				try {
-					return (await this.helpers.httpRequest(options)) as TResponse;
-				} catch (error) {
-					const err = error as { statusCode?: number; response?: { status?: number; headers?: Record<string, string>; body?: string }; headers?: Record<string, string>; body?: string };
-					const status = err?.statusCode ?? err?.response?.status;
-					const isRetryable = status === 429 || (status !== undefined && status >= 500 && status < 600);
-					if (!isRetryable || attempt >= MAX_RETRIES) {
-						// Parse MercadoPago API error response for a clearer message
-						let mpMessage = '';
-						try {
-							const rawBody = err?.response?.body ?? err?.body;
-							if (typeof rawBody === 'string') {
-								const parsed = JSON.parse(rawBody) as { message?: string; error?: string; cause?: unknown[] };
-								const parts: string[] = [];
-								if (parsed.error) parts.push(parsed.error);
-								if (parsed.message) parts.push(parsed.message);
-								if (Array.isArray(parsed.cause) && parsed.cause.length) {
-									parts.push(`Causes: ${parsed.cause.map((c) => (typeof c === 'string' ? c : JSON.stringify(c))).join(', ')}`);
-								}
-								mpMessage = parts.join(' - ');
-							}
-						} catch {
-							// If body parsing fails, use original error
+					const rawBody = err?.response?.body ?? err?.body;
+					if (typeof rawBody === 'string') {
+						const parsed = JSON.parse(rawBody) as { message?: string; error?: string; cause?: unknown[] };
+						const parts: string[] = [];
+						if (parsed.error) parts.push(parsed.error);
+						if (parsed.message) parts.push(parsed.message);
+						if (Array.isArray(parsed.cause) && parsed.cause.length) {
+							parts.push(`Causes: ${parsed.cause.map((c) => (typeof c === 'string' ? c : JSON.stringify(c))).join(', ')}`);
 						}
-						if (mpMessage) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`MercadoPago API error (${status ?? 'unknown'}): ${mpMessage}`,
-								{ description: (error as Error).message },
-							);
-						}
-						throw error;
+						mpMessage = parts.join(' - ');
 					}
-					attempt++;
-					const retryAfterRaw = err?.response?.headers?.['retry-after'] ?? err?.headers?.['retry-after'];
-					const retryAfterSeconds = typeof retryAfterRaw === 'string' ? Number(retryAfterRaw) : NaN;
-					const waitMs = Number.isFinite(retryAfterSeconds)
-						? Math.max(0, retryAfterSeconds * 1000)
-						: 1000 * attempt;
-					await sleep(waitMs);
+				} catch {
+					// If body parsing fails, use original error
 				}
+				if (mpMessage) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`MercadoPago API error (${status ?? 'unknown'}): ${mpMessage}`,
+						{ description: (error as Error).message },
+					);
+				}
+				throw error;
 			}
 		};
 
