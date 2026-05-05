@@ -161,3 +161,22 @@ The node's `makeRequest` function automatically:
 - Retries up to 2 times on 429 (rate limit) responses with exponential backoff
 - Respects `Retry-After` header if present
 - Supports non-JSON responses (e.g., CSV downloads) via `json: false` in RequestInit
+
+## npm Registry — STRICT RULE
+
+This project is open source and is published to the public npm registry. It **must never** contain references to the internal Fury registry (`npm.artifacts.furycloud.io`).
+
+- The project's `.npmrc` must point to `https://registry.npmjs.org/`
+- The `package-lock.json` must contain only `registry.npmjs.org` URLs
+- All CI workflows must use the public registry
+- If the user has a global `~/.npmrc` pointing to Fury (for other internal projects), use `--userconfig=/dev/null` or the env var `NPM_CONFIG_USERCONFIG=/dev/null` when running npm commands inside this project
+
+Recommended `npm install` command for this project:
+```bash
+NPM_CONFIG_USERCONFIG=/dev/null npm install --registry=https://registry.npmjs.org/
+```
+
+Before committing, verify there are no Fury references:
+```bash
+grep -r "fury" --include="*.json" --include=".npmrc" --include="*.yml" --include="*.yaml" --include="*.ts" --include="*.js" --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=coverage .
+```
