@@ -19,14 +19,19 @@ class MercadoPagoApi {
                 description: 'The MercadoPago access token',
             },
         ];
+        this.authenticate = {
+            type: 'generic',
+            properties: {
+                headers: {
+                    Authorization: '=Bearer {{$credentials.accessToken}}',
+                },
+            },
+        };
         this.test = {
             request: {
                 baseURL: 'https://api.mercadopago.com',
                 url: '/v1/payment_methods',
                 method: 'GET',
-                headers: {
-                    Authorization: '=Bearer {{$credentials.accessToken}}',
-                },
             },
         };
     }
