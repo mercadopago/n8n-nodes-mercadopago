@@ -36,3 +36,5 @@ jobs:
       # Skip prepublishOnly to avoid re-running build which overwrites the sed above
       # --provenance is required by n8n verified nodes (cryptographic build attestation)
       - run: npm publish --ignore-scripts --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
