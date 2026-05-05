@@ -1,12 +1,15 @@
 import { MercadoPagoApi } from './credentials/MercadoPagoApi.credentials';
+import { MercadoPagoSftp } from './credentials/MercadoPagoSftp.credentials';
 import { MercadoPago } from './nodes/MercadoPago/MercadoPago.node';
-
-export const version = '0.1.0';
 
 export const credentials = [
 	{
 		name: 'mercadoPagoApi',
 		class: MercadoPagoApi,
+	},
+	{
+		name: 'mercadoPagoSftp',
+		class: MercadoPagoSftp,
 	},
 ];
 
