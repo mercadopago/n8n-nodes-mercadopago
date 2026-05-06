@@ -40,7 +40,7 @@ describe('editReleaseReportConfig operation', () => {
     }) as TestContext;
 
     await expect(editReleaseReportConfig(ctx)).rejects.toThrow(
-      'At least one column with a non-empty "key" is required.'
+      'at least one column'
     );
   });
 

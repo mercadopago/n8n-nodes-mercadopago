@@ -40,7 +40,7 @@ describe('configureSettlementReport operation', () => {
     }) as TestContext;
 
     await expect(configureSettlementReport(ctx)).rejects.toThrow(
-      'At least one column with a non-empty "key" is required.'
+      'at least one column'
     );
   });
 

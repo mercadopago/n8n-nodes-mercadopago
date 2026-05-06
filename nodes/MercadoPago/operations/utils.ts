@@ -60,7 +60,7 @@ export const MAX_ITEMS_RETURN_ALL = 100000;
  * Supports both keySource/custom_key pattern and legacy key field.
  * Throws via ctx.nodeError if no valid columns are provided.
  */
-export function parseColumns(ctx: HandlerCtx, paramName = 'columns'): Array<{ key: string }> {
+export function parseColumns(ctx: HandlerCtx, paramName = 'columns', errorMessage?: string): Array<{ key: string }> {
 	const columnsCollection = ctx.get<ColumnsParam>(paramName);
 	const columnsArr = (columnsCollection?.columnsValues ?? [])
 		.map((c) => {
@@ -73,7 +73,7 @@ export function parseColumns(ctx: HandlerCtx, paramName = 'columns'): Array<{ ke
 		.filter((c) => c.key && c.key.length > 0);
 
 	if (!columnsArr.length) {
-		ctx.nodeError('At least one column with a non-empty "key" is required.');
+		ctx.nodeError(errorMessage ?? 'At least one column with a non-empty "key" is required.');
 	}
 
 	return columnsArr;

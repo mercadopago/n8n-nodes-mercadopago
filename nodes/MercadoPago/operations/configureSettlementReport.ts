@@ -50,7 +50,7 @@ type ConfigureSettlementReportBody = {
  */
 const handler: OperationHandler = async (ctx) => {
 	// Required fields using shared helpers
-	const columnsArr = parseColumns(ctx);
+	const columnsArr = parseColumns(ctx, 'columns', "Configure Settlement Report: please add at least one column using the 'Columns (Settlement)' field → 'Add Column'.");
 	const fileNamePrefix = parseFileNamePrefix(ctx);
 	const frequency = parseFrequency(ctx);
 	const sftpPayload = parseSftpInfo(ctx);
