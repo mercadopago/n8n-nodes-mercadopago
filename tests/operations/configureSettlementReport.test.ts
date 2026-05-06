@@ -40,7 +40,7 @@ describe('configureSettlementReport operation', () => {
     }) as TestContext;
 
     await expect(configureSettlementReport(ctx)).rejects.toThrow(
-      'At least one column with a non-empty "key" is required.'
+      'at least one column'
     );
   });
 
@@ -230,12 +230,12 @@ describe('configureSettlementReport operation', () => {
 
   it('should perform POST to settlement_report/config endpoint (happy path)', async () => {
     const result = await configureSettlementReport(ctx);
-    
+
     expect(result).toEqual({ id: 'config_settlement_123' });
     expect(ctx.lastRequest).toBeDefined();
     expect(ctx.lastRequest?.method).toBe('POST');
     expect(ctx.lastRequest?.url).toBe('https://api.mercadopago.com/v1/account/settlement_report/config');
-    
+
     expect(ctx.lastRequest?.body).toMatchObject({
       columns: [
         { key: 'EXTERNAL_REFERENCE' },
@@ -245,5 +245,28 @@ describe('configureSettlementReport operation', () => {
       frequency: { hour: 10, value: 1, type: 'monthly' },
       scheduled: false
     });
+  });
+
+  it('should retry with PUT when POST returns 409 (config already exists)', async () => {
+    let callCount = 0;
+    ctx = makeMockCtx({
+      params: { ...baseParams },
+      requestImpl: async (init) => {
+        callCount++;
+        if (callCount === 1) {
+          expect(init.method).toBe('POST');
+          const err: any = new Error('Conflict');
+          err.statusCode = 409;
+          throw err;
+        }
+        expect(init.method).toBe('PUT');
+        expect(init.url).toBe('https://api.mercadopago.com/v1/account/settlement_report/config');
+        return { id: 'config_settlement_123' };
+      },
+    }) as TestContext;
+
+    const result = await configureSettlementReport(ctx);
+    expect(result).toEqual({ id: 'config_settlement_123' });
+    expect(callCount).toBe(2);
   });
 });

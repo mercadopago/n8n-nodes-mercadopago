@@ -22,7 +22,7 @@ type ReleaseReportAdditionalFields = {
 	scheduled?: boolean;
 };
 
-type ConfigureReleaseReportBody = {
+type ReleaseReportConfigBody = {
 	columns: Array<{ key: string }>;
 	file_name_prefix: string;
 	frequency: { hour: number; value: number; type: string };
@@ -39,34 +39,33 @@ type ConfigureReleaseReportBody = {
 };
 
 /**
- * Configure Release Report.
+ * Configure Release Report (upsert).
  *
- * Builds and validates the payload to create/update the Release Report
- * generation preferences for the account, then POSTs to
- * `v1/account/release_report/config`.
+ * Creates or updates the Release Report configuration for the account.
+ * Attempts POST first; if the configuration already exists (409), retries
+ * with PUT to update it. The caller does not need to know whether a
+ * configuration exists beforehand.
  *
  * Required inputs:
- * - `columns`: at least one entry with a non-empty `key` (selected or custom).
+ * - `columns`: at least one entry with a non-empty `key`.
  * - `file_name_prefix`: non-empty string used as report file prefix.
  * - `frequency`: object with `hour` (0-23), `value` (> 0) and `type` in
  *   ['daily', 'weekly', 'monthly'].
  *
  * Optional inputs:
- * - `sftp_info`: connection data; empty values are pruned.
+ * - SFTP credential: connection data for report delivery; empty values are pruned.
  * - `configAdditionalFields`: separator, display timezone, translation, email
  *   notifications, and boolean flags which default to false when missing.
  */
 const handler: OperationHandler = async (ctx) => {
-	// Required fields using shared helpers
-	const columnsArr = parseColumns(ctx);
+	const columnsArr = parseColumns(ctx, 'columns', "Configure Release Report: please add at least one column using the 'Columns' field → 'Add Column'.");
 	const fileNamePrefix = parseFileNamePrefix(ctx);
 	const frequency = parseFrequency(ctx);
 	const sftpPayload = parseSftpInfo(ctx);
 
-	// Additional fields (use a unique name in node UI to avoid collision)
 	const additional = ctx.get<ReleaseReportAdditionalFields>('configAdditionalFields', {});
 
-	const body: ConfigureReleaseReportBody = {
+	const body: ReleaseReportConfigBody = {
 		columns: columnsArr,
 		file_name_prefix: fileNamePrefix,
 		frequency,
@@ -85,13 +84,24 @@ const handler: OperationHandler = async (ctx) => {
 	const emailList = parseEmails(additional.notification_email_list);
 	if (emailList.length) body.notification_email_list = emailList;
 
-	const response = await ctx.request({
-		method: 'POST',
-		url: API_ENDPOINTS.RELEASE_REPORT_CONFIG,
-		body,
-	});
-
-	return response;
+	try {
+		return await ctx.request({
+			method: 'POST',
+			url: API_ENDPOINTS.RELEASE_REPORT_CONFIG,
+			body,
+		});
+	} catch (error) {
+		const status = (error as { statusCode?: number; response?: { status?: number } })?.statusCode
+			?? (error as { statusCode?: number; response?: { status?: number } })?.response?.status;
+		if (status === 409) {
+			return await ctx.request({
+				method: 'PUT',
+				url: API_ENDPOINTS.RELEASE_REPORT_CONFIG,
+				body,
+			});
+		}
+		throw error;
+	}
 };
 
 export default handler;
