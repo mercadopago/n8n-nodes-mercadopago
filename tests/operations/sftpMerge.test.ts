@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseSftpInfo } from '../../src/nodes/MercadoPago/operations/utils';
+import { parseSftpInfo } from '../../nodes/MercadoPago/operations/utils';
 import { makeMockCtx } from '../helpers/mockCtx';
 import { TestContext } from '../types/test-types';
 
