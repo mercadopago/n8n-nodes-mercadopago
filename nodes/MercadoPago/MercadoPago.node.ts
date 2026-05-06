@@ -52,9 +52,9 @@ export class MercadoPago implements INodeType {
 						resource: ['reporting'],
 						operation: [
 							'configureReleaseReport',
-							'editReleaseReportConfig',
+							
 							'configureSettlementReport',
-							'editSettlementReport',
+							
 						],
 					},
 				},
@@ -93,10 +93,8 @@ export class MercadoPago implements INodeType {
 				options: [
 					{ name: 'List Release Reports', value: 'listReleaseReports', description: 'List previously created release reports (Reporting API)' },
 					{ name: 'List Settlement Reports', value: 'listSettlementReports', description: 'List previously created settlement reports (Reporting API)' },
-					{ name: 'Configure Release Report', value: 'configureReleaseReport', description: 'Configure release report preferences (fields, frequency, delivery options)' },
-					{ name: 'Configure Settlement Report', value: 'configureSettlementReport', description: 'Configure settlement report preferences (fields, frequency, delivery options)' },
-					{ name: 'Edit Release Report Config', value: 'editReleaseReportConfig', description: 'Update existing release report preferences' },
-					{ name: 'Edit Settlement Report Config', value: 'editSettlementReport', description: 'Update existing settlement report preferences' },
+					{ name: 'Configure Release Report', value: 'configureReleaseReport', description: 'Create or update Release Report preferences (columns, frequency, delivery options)' },
+					{ name: 'Configure Settlement Report', value: 'configureSettlementReport', description: 'Create or update Settlement Report preferences (columns, frequency, delivery options)' },
 					{ name: 'Get Release Report Config', value: 'getReleaseReportConfig', description: 'Get current release report configuration for the account' },
 					{ name: 'Get Settlement Report Config', value: 'getSettlementReportConfig', description: 'Get current settlement report configuration for the account' },
 					{ name: 'Download Release Report', value: 'downloadReleaseReport', description: 'Download a generated release report file (CSV)' },
@@ -219,7 +217,7 @@ export class MercadoPago implements INodeType {
 				type: 'fixedCollection',
 				typeOptions: { multipleValues: true },
 				default: {},
-				displayOptions: { show: { resource: ['reporting'], operation: ['configureSettlementReport', 'editSettlementReport'] } },
+				displayOptions: { show: { resource: ['reporting'], operation: ['configureSettlementReport'] } },
 				placeholder: 'Add Column',
 				options: [
 					{
@@ -336,7 +334,7 @@ export class MercadoPago implements INodeType {
 				type: 'fixedCollection',
 				typeOptions: { multipleValues: true },
 				default: {},
-				displayOptions: { show: { resource: ['reporting'], operation: ['configureReleaseReport', 'editReleaseReportConfig'] } },
+				displayOptions: { show: { resource: ['reporting'], operation: ['configureReleaseReport'] } },
 				placeholder: 'Add Column',
 				options: [
 					{
@@ -411,7 +409,7 @@ export class MercadoPago implements INodeType {
 				name: 'file_name_prefix',
 				type: 'string',
 				default: '',
-				displayOptions: { show: { operation: ['configureReleaseReport', 'editReleaseReportConfig', 'configureSettlementReport', 'editSettlementReport'] } },
+				displayOptions: { show: { operation: ['configureReleaseReport',  'configureSettlementReport'] } },
 				description: 'Prefix for the generated report file name',
 				required: true,
 			},
@@ -421,7 +419,7 @@ export class MercadoPago implements INodeType {
 				type: 'fixedCollection',
 				typeOptions: { multipleValues: false },
 				default: {},
-				displayOptions: { show: { operation: ['configureReleaseReport', 'editReleaseReportConfig', 'configureSettlementReport', 'editSettlementReport'] } },
+				displayOptions: { show: { operation: ['configureReleaseReport',  'configureSettlementReport'] } },
 				options: [
 					{
 						name: 'frequencyValues',
@@ -444,7 +442,7 @@ export class MercadoPago implements INodeType {
 				type: 'collection',
 				placeholder: 'Add Field',
 				default: {},
-				displayOptions: { show: { operation: ['configureReleaseReport', 'editReleaseReportConfig'] } },
+				displayOptions: { show: { operation: ['configureReleaseReport'] } },
 				options: [
 					{ displayName: 'Separator', name: 'separator', type: 'string', default: '' },
 					{ displayName: 'Display Timezone', name: 'display_timezone', type: 'string', default: 'GMT-04' },
@@ -478,7 +476,7 @@ export class MercadoPago implements INodeType {
 				type: 'collection',
 				placeholder: 'Add Field',
 				default: {},
-				displayOptions: { show: { operation: ['configureSettlementReport', 'editSettlementReport'] } },
+				displayOptions: { show: { operation: ['configureSettlementReport'] } },
 				options: [
 					{ displayName: 'Separator', name: 'separator', type: 'string', default: '' },
 					{ displayName: 'Display Timezone', name: 'display_timezone', type: 'string', default: 'GMT-04' },

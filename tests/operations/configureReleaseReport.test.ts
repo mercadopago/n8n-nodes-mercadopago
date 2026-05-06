@@ -211,12 +211,12 @@ describe('configureReleaseReport operation', () => {
 
   it('should perform POST to release_report/config endpoint (happy path)', async () => {
     const result = await configureReleaseReport(ctx);
-    
+
     expect(result).toEqual({ id: 'config_123' });
     expect(ctx.lastRequest).toBeDefined();
     expect(ctx.lastRequest?.method).toBe('POST');
     expect(ctx.lastRequest?.url).toBe('https://api.mercadopago.com/v1/account/release_report/config');
-    
+
     expect(ctx.lastRequest?.body).toMatchObject({
       columns: [
         { key: 'date' },
@@ -230,5 +230,28 @@ describe('configureReleaseReport operation', () => {
       execute_after_withdrawal: false,
       scheduled: false
     });
+  });
+
+  it('should retry with PUT when POST returns 409 (config already exists)', async () => {
+    let callCount = 0;
+    ctx = makeMockCtx({
+      params: { ...baseParams },
+      requestImpl: async (init) => {
+        callCount++;
+        if (callCount === 1) {
+          expect(init.method).toBe('POST');
+          const err: any = new Error('Conflict');
+          err.statusCode = 409;
+          throw err;
+        }
+        expect(init.method).toBe('PUT');
+        expect(init.url).toBe('https://api.mercadopago.com/v1/account/release_report/config');
+        return { id: 'config_123' };
+      },
+    }) as TestContext;
+
+    const result = await configureReleaseReport(ctx);
+    expect(result).toEqual({ id: 'config_123' });
+    expect(callCount).toBe(2);
   });
 });

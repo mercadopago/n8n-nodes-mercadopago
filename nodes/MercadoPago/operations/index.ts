@@ -2,14 +2,12 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 import createPaymentLink from './createPaymentLink';
 import listReleaseReports from './listReleaseReports';
 import configureReleaseReport from './configureReleaseReport';
-import editReleaseReportConfig from './editReleaseReportConfig';
 import getReleaseReportConfig from './getReleaseReportConfig';
 import downloadReleaseReport from './downloadReleaseReport';
 import listSettlementReports from './listSettlementReports';
 import downloadSettlementReport from './downloadSettlementReport';
 import getSettlementReportConfig from './getSettlementReportConfig';
 import configureSettlementReport from './configureSettlementReport';
-import editSettlementReport from './editSettlementReport';
 
 /**
  * Context object passed to each operation handler. It contains:
@@ -68,14 +66,12 @@ export const operations = {
 	createPaymentLink,
 	listReleaseReports,
 	configureReleaseReport,
-	editReleaseReportConfig,
 	getReleaseReportConfig,
 	downloadReleaseReport,
 	listSettlementReports,
 	downloadSettlementReport,
 	getSettlementReportConfig,
 	configureSettlementReport,
-	editSettlementReport,
 } satisfies Record<string, OperationHandler>;
 
 export type OperationName = keyof typeof operations;
