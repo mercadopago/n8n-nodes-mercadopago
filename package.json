@@ -1,6 +1,6 @@
 {
   "name": "@mercadopago/n8n-nodes-mercadopago",
-  "version": "0.2.9",
+  "version": "0.3.0",
   "description": "Community node for Mercado Pago",
   "keywords": [
     "n8n-community-node-package",
@@ -26,10 +26,9 @@
   "scripts": {
     "build": "npx rimraf dist && tsc && npx tsx --tsconfig tsconfig.json ./node_modules/gulp/bin/gulp.js -f gulpfile.mjs build:icons",
     "dev": "tsc --watch",
-    "dist": "npx rimraf dist && tsc -p ./tsconfig.json",
-    "format": "prettier src/nodes src/credentials --write",
-    "lint": "eslint src/nodes src/credentials --no-warn-ignored",
-    "lintfix": "eslint src/nodes src/credentials package.json --fix",
+    "format": "prettier credentials nodes --write",
+    "lint": "eslint credentials nodes --no-warn-ignored",
+    "lintfix": "eslint credentials nodes package.json --fix",
     "lint:tests": "eslint tests/**/*.ts",
     "lint:all": "eslint .",
     "prepublishOnly": "npm run build && npm run lint:all",
@@ -58,7 +57,6 @@
     "@typescript-eslint/eslint-plugin": "8.39.1",
     "@typescript-eslint/parser": "8.39.1",
     "@vitest/coverage-v8": "^3.2.4",
-    "esbuild": "^0.25.0",
     "eslint": "^9.34.0",
     "eslint-plugin-n8n-nodes-base": "^1.16.6",
     "globals": "^16.4.0",
@@ -73,14 +71,5 @@
   },
   "peerDependencies": {
     "n8n-workflow": "*"
-  },
-  "overrides": {
-    "esbuild": "^0.25.0",
-    "@isaacs/brace-expansion": ">=5.0.1",
-    "form-data": ">=4.0.4",
-    "js-yaml": "^4.1.1",
-    "lodash": "^4.18.1",
-    "qs": ">=6.14.1",
-    "vite": ">=7.1.11"
   }
 }

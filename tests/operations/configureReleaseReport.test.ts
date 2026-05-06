@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import handler from '../../src/nodes/MercadoPago/operations/configureReleaseReport';
+import handler from '../../nodes/MercadoPago/operations/configureReleaseReport';
 import { makeMockCtx } from '../helpers/mockCtx';
 import { TestContext, OperationHandler } from '../types/test-types';
 

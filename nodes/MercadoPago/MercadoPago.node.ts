@@ -1,10 +1,9 @@
-// src/nodes/mercadopago/MercadoPago.node.ts
 import {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	type NodeConnectionType,
+	NodeConnectionTypes,
 	type IHttpRequestOptions,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -29,7 +28,7 @@ export class MercadoPago implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'MercadoPago',
 		name: 'mercadoPago',
-		icon: 'file:../../resources/icons/icon-mercadopago.svg',
+		icon: { light: 'file:icon-mercadopago.svg', dark: 'file:icon-mercadopago.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"]}}',
@@ -37,8 +36,9 @@ export class MercadoPago implements INodeType {
 		defaults: {
 			name: 'MercadoPago',
 		},
-		inputs: ['main'] as NodeConnectionType[],
-		outputs: ['main'] as NodeConnectionType[],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'mercadoPagoApi',
