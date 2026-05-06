@@ -1,6 +1,8 @@
 <div align="center">
 
-# 🟦 n8n-nodes-mercadopago
+<img src="nodes/MercadoPago/icon-mercadopago.svg" width="80" alt="MercadoPago" />
+
+# n8n-nodes-mercadopago
 
 **The official Mercado Pago community node for n8n**
 
