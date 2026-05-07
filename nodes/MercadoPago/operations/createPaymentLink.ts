@@ -34,14 +34,14 @@ type PaymentLinkAdditionalFields = {
 };
 
 type PreferenceItem = {
-	id: string;
 	title: string;
-	description: string;
-	picture_url: string;
-	category_id: string;
 	quantity: number;
-	currency_id: string;
 	unit_price: number;
+	id?: string;
+	description?: string;
+	picture_url?: string;
+	category_id?: string;
+	currency_id?: string;
 };
 
 type CreatePreferenceBody = {
@@ -88,6 +88,25 @@ const handler: OperationHandler = async (ctx) => {
 	// Items
 	const itemsCollection = ctx.get<ItemsParam>('items');
 	const itemsArr = itemsCollection?.itemsValues ?? [];
+
+	if (!itemsArr.length) {
+		ctx.nodeError("Please add at least one item using the 'Items' field → 'Add Item'.");
+	}
+
+	for (let i = 0; i < itemsArr.length; i++) {
+		const title = (itemsArr[i]?.title ?? '').toString().trim();
+		if (!title) {
+			ctx.nodeError(`Item at position ${i + 1} requires a non-empty 'Title'.`);
+		}
+		const unitPrice = Number(itemsArr[i]?.unit_price) || 0;
+		if (unitPrice <= 0) {
+			ctx.nodeError(`Item at position ${i + 1}: 'Unit Price' must be greater than 0.`);
+		}
+		const quantity = Number(itemsArr[i]?.quantity) || 0;
+		if (quantity <= 0) {
+			ctx.nodeError(`Item at position ${i + 1}: 'Quantity' must be a positive number.`);
+		}
+	}
 
 	// Additional fields
 	const additionalFields = ctx.get<PaymentLinkAdditionalFields>('additionalFields', {});
@@ -160,18 +179,26 @@ const handler: OperationHandler = async (ctx) => {
 		ctx.nodeError('Expiration Date From must be earlier than or equal to Expiration Date To.');
 	}
 
-	// Body
+	// Body — only include item fields that have actual values
 	const body: CreatePreferenceBody = {
-		items: itemsArr.map((item) => ({
-			id: (item.id ?? '').toString(),
-			title: (item.title ?? '').toString(),
-			description: (item.description ?? '').toString(),
-			picture_url: (item.picture_url ?? '').toString(),
-			category_id: (item.category_id ?? '').toString(),
-			quantity: Number(item.quantity) || 0,
-			currency_id: (item.currency_id ?? '').toString(),
-			unit_price: Number(item.unit_price) || 0,
-		})),
+		items: itemsArr.map((item) => {
+			const mapped: PreferenceItem & Record<string, unknown> = {
+				title: (item.title ?? '').toString().trim(),
+				quantity: Number(item.quantity) || 1,
+				unit_price: Number(item.unit_price) || 0,
+			};
+			const id = (item.id ?? '').toString().trim();
+			if (id) mapped.id = id;
+			const description = (item.description ?? '').toString().trim();
+			if (description) mapped.description = description;
+			const picture_url = (item.picture_url ?? '').toString().trim();
+			if (picture_url) mapped.picture_url = picture_url;
+			const category_id = (item.category_id ?? '').toString().trim();
+			if (category_id) mapped.category_id = category_id;
+			const currency_id = (item.currency_id ?? '').toString().trim();
+			if (currency_id) mapped.currency_id = currency_id;
+			return mapped;
+		}),
 	};
 
 	if (additionalFields.external_reference) body.external_reference = additionalFields.external_reference;
