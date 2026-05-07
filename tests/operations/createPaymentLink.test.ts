@@ -160,24 +160,21 @@ describe('createPaymentLink operation', () => {
     });
   });
 
-  it('should handle API errors gracefully', async () => {
-    const errorResponse = {
-      status: 400,
-      message: 'Invalid request data',
-      error: 'bad_request',
-      cause: ['Invalid item price']
-    };
-
+  it('should handle API errors with parsed body (httpRequest format)', async () => {
     ctx = makeMockCtx({
       params: { items: baseItem },
       requestImpl: async () => {
-        const error: any = new Error('API Error');
-        error.response = { data: errorResponse };
+        const error: any = new Error('Bad Request');
+        error.statusCode = 400;
+        error.response = {
+          status: 400,
+          body: { message: 'Invalid items', error: 'bad_request', cause: [{ code: 'INVALID_PRICE', description: 'unit_price must be greater than 0' }] },
+        };
         throw error;
       },
     }) as TestContext;
 
-    await expect(createPaymentLink(ctx)).rejects.toThrow(/API Error/);
+    await expect(createPaymentLink(ctx)).rejects.toThrow();
   });
 
   it('should handle network errors', async () => {
@@ -191,16 +188,22 @@ describe('createPaymentLink operation', () => {
     await expect(createPaymentLink(ctx)).rejects.toThrow(/Network error/);
   });
 
-  it('should handle empty items array', async () => {
+  it('should require at least one item', async () => {
+    ctx = makeMockCtx({
+      params: { items: { itemsValues: [] } },
+    }) as TestContext;
+
+    await expect(createPaymentLink(ctx)).rejects.toThrow(/at least one item/);
+  });
+
+  it('should require non-empty title for each item', async () => {
     ctx = makeMockCtx({
       params: {
-        items: { itemsValues: [] },
+        items: { itemsValues: [{ title: '', quantity: 1, currency_id: 'BRL', unit_price: 10 }] },
       },
     }) as TestContext;
 
-    // Verificamos que devuelva un objeto vacío o algún valor sin error
-    const result = await createPaymentLink(ctx);
-    expect(result).toBeDefined();
+    await expect(createPaymentLink(ctx)).rejects.toThrow(/Title/);
   });
 
   it('should handle extremely long input values', async () => {

@@ -15,20 +15,28 @@ const handler: OperationHandler = async (ctx) => {
 
 	const url = API_ENDPOINTS.RELEASE_REPORT_DOWNLOAD(fileName);
 
-	// Request CSV as plain text
-	const response = await ctx.request({
-		method: 'GET',
-		url,
-		json: false,
-		headers: { Accept: 'text/csv' },
-	});
-
-	// Return as JSON wrapper to keep node output consistent
-	return {
-		file_name: fileName,
-		content_type: 'text/csv',
-		content: typeof response === 'string' ? response : String(response),
-	};
+	try {
+		const response = await ctx.request({
+			method: 'GET',
+			url,
+			json: false,
+			headers: { Accept: 'text/csv' },
+		});
+		return {
+			file_name: fileName,
+			content_type: 'text/csv',
+			content: typeof response === 'string' ? response : String(response),
+		};
+	} catch (error) {
+		const status = (error as { statusCode?: number; response?: { status?: number } })?.statusCode
+			?? (error as { statusCode?: number; response?: { status?: number } })?.response?.status;
+		if (status === 404) {
+			ctx.nodeError(
+				`Request failed with status code 404 — Release Report file "${fileName}" not found. Use 'List Release Reports' to get the available file names.`,
+			);
+		}
+		throw error;
+	}
 };
 
 export default handler;

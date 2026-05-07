@@ -125,9 +125,9 @@ export class MercadoPago implements INodeType {
 							{ displayName: 'Description', name: 'description', type: 'string', default: '', description: 'Item description' },
 							{ displayName: 'Picture URL', name: 'picture_url', type: 'string', default: '', description: 'Item image URL' },
 							{ displayName: 'Category ID', name: 'category_id', type: 'string', default: '', description: 'Item category' },
-							{ displayName: 'Quantity', name: 'quantity', type: 'number', default: 1, description: 'Item quantity', required: true },
-							{ displayName: 'Currency ID', name: 'currency_id', type: 'string', default: '', description: 'Currency code (e.g. BRL, USD)', required: true },
-							{ displayName: 'Unit Price', name: 'unit_price', type: 'number', default: 0, description: 'Item unit price', required: true },
+							{ displayName: 'Quantity', name: 'quantity', type: 'number', typeOptions: { minValue: 1 }, default: 1, description: 'Item quantity (must be ≥ 1)', required: true },
+							{ displayName: 'Currency ID', name: 'currency_id', type: 'string', default: '', description: 'Currency code (e.g. BRL, USD)' },
+							{ displayName: 'Unit Price', name: 'unit_price', type: 'number', default: 1, description: 'Unit price — must be greater than 0. Use integer values for currencies that do not support decimals (e.g. CLP)', required: true },
 						],
 					},
 				],
@@ -552,28 +552,36 @@ export class MercadoPago implements INodeType {
 			try {
 				return (await this.helpers.httpRequest(options)) as TResponse;
 			} catch (error) {
-				const err = error as { statusCode?: number; response?: { status?: number; body?: string }; body?: string };
+				const err = error as { statusCode?: number; response?: { status?: number; body?: unknown }; body?: unknown };
 				const status = err?.statusCode ?? err?.response?.status;
 				let mpMessage = '';
 				try {
 					const rawBody = err?.response?.body ?? err?.body;
+					let parsed: { message?: string; error?: string; cause?: unknown[] } = {};
 					if (typeof rawBody === 'string') {
-						const parsed = JSON.parse(rawBody) as { message?: string; error?: string; cause?: unknown[] };
-						const parts: string[] = [];
-						if (parsed.error) parts.push(parsed.error);
-						if (parsed.message) parts.push(parsed.message);
-						if (Array.isArray(parsed.cause) && parsed.cause.length) {
-							parts.push(`Causes: ${parsed.cause.map((c) => (typeof c === 'string' ? c : JSON.stringify(c))).join(', ')}`);
-						}
-						mpMessage = parts.join(' - ');
+						parsed = JSON.parse(rawBody);
+					} else if (rawBody && typeof rawBody === 'object') {
+						parsed = rawBody as typeof parsed;
 					}
+					const parts: string[] = [];
+					if (parsed.error) parts.push(parsed.error);
+					if (parsed.message) parts.push(parsed.message);
+					if (Array.isArray(parsed.cause) && parsed.cause.length) {
+						const causeStr = parsed.cause.map((c) => {
+							if (typeof c === 'string') return c;
+							const obj = c as { code?: string; description?: string };
+							return obj.description ?? obj.code ?? JSON.stringify(c);
+						}).join(', ');
+						parts.push(`Causes: ${causeStr}`);
+					}
+					mpMessage = parts.join(' — ');
 				} catch {
 					// If body parsing fails, use original error
 				}
 				if (mpMessage) {
 					throw new NodeOperationError(
 						this.getNode(),
-						`MercadoPago API error (${status ?? 'unknown'}): ${mpMessage}`,
+						`Request failed with status code ${status ?? 'unknown'} — ${mpMessage}`,
 						{ description: (error as Error).message },
 					);
 				}
