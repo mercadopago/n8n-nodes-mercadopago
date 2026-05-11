@@ -24,7 +24,7 @@ describe('downloadSettlementReport operation', () => {
     }) as TestContext;
 
     await expect(downloadSettlementReport(ctx)).rejects.toThrow(
-      'Parameter "File Name" is required.'
+      'Please select or enter a settlement report'
     );
   });
 

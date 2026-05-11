@@ -10,8 +10,13 @@ import { API_ENDPOINTS } from '../../../constants';
  * as a string, to keep the node output consistent.
  */
 const handler: OperationHandler = async (ctx) => {
-	const fileName = (ctx.get<string>('file_name', '') || '').toString().trim();
-	if (!fileName) ctx.nodeError('Parameter "File Name" is required.');
+	// file_name can be a resourceLocator object { mode, value } or a plain string
+	const fileNameParam = ctx.get<string | { value?: string }>('file_name', '');
+	const fileNameRaw = typeof fileNameParam === 'object' && fileNameParam !== null
+		? (fileNameParam.value ?? '')
+		: fileNameParam ?? '';
+	const fileName = fileNameRaw.toString().trim();
+	if (!fileName) ctx.nodeError("Please select or enter a release report file name in the 'File' field.");
 
 	const url = API_ENDPOINTS.RELEASE_REPORT_DOWNLOAD(fileName);
 
