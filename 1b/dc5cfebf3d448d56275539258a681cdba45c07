@@ -1,0 +1,39 @@
+nodes/MercadoPago/operations/downloadReleaseReport.ts
+  s_6ce6bd3d6d99e4::t_a335ace4618c52 34-37
+nodes/MercadoPago/operations/listSettlementReports.ts
+  s_6ce6bd3d6d99e4::t_06dbefa4e867dd 48
+nodes/MercadoPago/operations/listReleaseReports.ts
+  s_6ce6bd3d6d99e4::t_06dbefa4e867dd 48
+nodes/MercadoPago/MercadoPago.node.ts
+  s_6ce6bd3d6d99e4::t_cda5cba19898a9 8-9
+  s_6ce6bd3d6d99e4::t_06dbefa4e867dd 66,77,89,525,585
+  s_6ce6bd3d6d99e4::t_718348845d544b 566-571
+  s_6ce6bd3d6d99e4::t_da73d2073a5b45 596-598,600,603
+  s_6ce6bd3d6d99e4::t_c161a29dff5689 109,303,332,506
+  s_6ce6bd3d6d99e4::t_afe5e371dfa6e6 554
+  s_6ce6bd3d6d99e4::t_b92465e88875f4 72
+nodes/MercadoPago/operations/downloadSettlementReport.ts
+  s_6ce6bd3d6d99e4::t_c65b3f8f92c353 34-37
+tests/helpers/mockCtx.ts
+  s_6ce6bd3d6d99e4::t_efb3e9dfc4d815 58-62
+nodes/MercadoPago/operations/index.ts
+  s_6ce6bd3d6d99e4::t_5fa3167b4f79a3 52
+package.json
+  ai_agent 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.6",
+  "base_commit_sha": "1bdc5cfebf3d448d56275539258a681cdba45c07",
+  "prompts": {},
+  "sessions": {
+    "s_6ce6bd3d6d99e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "050c7cc1-e0ac-45ed-93c9-08b944b962a3",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "sheredia_meli <samuel.heredia@mercadolibre.cl>"
+    }
+  }
+}
