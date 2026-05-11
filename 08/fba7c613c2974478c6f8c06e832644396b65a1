@@ -1,0 +1,37 @@
+nodes/MercadoPago/operations/createPaymentLink.ts
+  s_6ce6bd3d6d99e4::t_607d13d46168d1 226,232-243
+nodes/MercadoPago/operations/downloadSettlementReport.ts
+  s_6ce6bd3d6d99e4::t_f7c0c9ba68cda6 13-19
+tests/operations/downloadSettlementReport.test.ts
+  s_6ce6bd3d6d99e4::t_86bb362b258510 27
+tests/operations/downloadReleaseReport.test.ts
+  s_6ce6bd3d6d99e4::t_86bb362b258510 27
+nodes/MercadoPago/MercadoPago.node.ts
+  s_6ce6bd3d6d99e4::t_76c8fa26314f0e 125-132,154-158,160,199,234,351,514-518,548
+  s_6ce6bd3d6d99e4::t_9d362f6f37475b 249-251,337,446,495-497,509,529-531,543
+  s_6ce6bd3d6d99e4::t_18a298baf9e672 167-173
+  s_6ce6bd3d6d99e4::t_279b7c3f241e4a 554,556-583,585-603
+  s_6ce6bd3d6d99e4::t_6095c21773cbf4 20-45
+  s_6ce6bd3d6d99e4::t_fd6da996b3a1c2 187,189,196,205-206,213-214,221-222
+  s_6ce6bd3d6d99e4::t_18b988f7ec2559 608-618
+  s_6ce6bd3d6d99e4::t_770eafd505b378 459,461
+  s_6ce6bd3d6d99e4::t_fc0d36988d8568 3,5
+nodes/MercadoPago/operations/downloadReleaseReport.ts
+  s_6ce6bd3d6d99e4::t_91317063ad763c 13-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.6",
+  "base_commit_sha": "08fba7c613c2974478c6f8c06e832644396b65a1",
+  "prompts": {},
+  "sessions": {
+    "s_6ce6bd3d6d99e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "050c7cc1-e0ac-45ed-93c9-08b944b962a3",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "sheredia_meli <samuel.heredia@mercadolibre.cl>"
+    }
+  }
+}
