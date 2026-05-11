@@ -24,15 +24,17 @@ async function fetchReportFiles(
 	this: ILoadOptionsFunctions,
 	url: string,
 ): Promise<INodeListSearchResult> {
-	const credentials = (await this.getCredentials('mercadoPagoApi')) as MercadoPagoCredentials;
-	const response = (await this.helpers.httpRequest({
-		method: 'GET',
-		url,
-		headers: {
-			Authorization: `Bearer ${credentials.accessToken}`,
-			'X-Platform-Id': HTTP_HEADERS.X_PLATFORM_ID,
+	const response = (await this.helpers.httpRequestWithAuthentication.call(
+		this,
+		'mercadoPagoApi',
+		{
+			method: 'GET',
+			url,
+			headers: {
+				'X-Platform-Id': HTTP_HEADERS.X_PLATFORM_ID,
+			},
 		},
-	})) as { results?: Array<{ file_name?: string }> } | Array<{ file_name?: string }>;
+	)) as { results?: Array<{ file_name?: string }> } | Array<{ file_name?: string }>;
 
 	const list = Array.isArray(response) ? response : (response.results ?? []);
 	const results = list
@@ -645,13 +647,16 @@ export class MercadoPago implements INodeType {
 				timeout: init.timeoutMs ?? DEFAULT_TIMEOUT_MS,
 				headers: {
 					...(isJson ? { 'Content-Type': 'application/json' } : {}),
-					Authorization: `Bearer ${credentials.accessToken}`,
 					'X-Platform-Id': HTTP_HEADERS.X_PLATFORM_ID,
 					...(init.headers ?? {}),
 				},
 			};
 
-			return (await this.helpers.httpRequest(options)) as TResponse;
+			return (await this.helpers.httpRequestWithAuthentication.call(
+				this,
+				'mercadoPagoApi',
+				options,
+			)) as TResponse;
 		};
 
 		const makeCtx = (i: number): HandlerCtx => ({
