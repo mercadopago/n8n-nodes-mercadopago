@@ -65,14 +65,14 @@ export type OperationHandler = (ctx: HandlerCtx) => Promise<unknown>;
  */
 export const operations = {
 	createPaymentLink,
-	listReleaseReports,
-	configureReleaseReport,
+	getManyReleaseReports: listReleaseReports,
+	createOrUpdateReleaseReportConfig: configureReleaseReport,
 	getReleaseReportConfig,
 	downloadReleaseReport,
-	listSettlementReports,
+	getManySettlementReports: listSettlementReports,
 	downloadSettlementReport,
 	getSettlementReportConfig,
-	configureSettlementReport,
+	createOrUpdateSettlementReportConfig: configureSettlementReport,
 } satisfies Record<string, OperationHandler>;
 
 export type OperationName = keyof typeof operations;
