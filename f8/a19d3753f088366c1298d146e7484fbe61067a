@@ -1,0 +1,23 @@
+nodes/MercadoPago/operations/index.ts
+  s_6ce6bd3d6d99e4::t_b7d6e3e5d43641 68-69,72,75
+nodes/MercadoPago/MercadoPago.node.ts
+  s_6ce6bd3d6d99e4::t_25f6a72f15800c 85,87,125-128,134,264,353,361,368,383,460,470,493,527
+package.json
+  ai_agent 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.6",
+  "base_commit_sha": "f8a19d3753f088366c1298d146e7484fbe61067a",
+  "prompts": {},
+  "sessions": {
+    "s_6ce6bd3d6d99e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "050c7cc1-e0ac-45ed-93c9-08b944b962a3",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "sheredia_meli <samuel.heredia@mercadolibre.cl>"
+    }
+  }
+}
