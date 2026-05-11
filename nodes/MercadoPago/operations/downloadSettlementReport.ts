@@ -31,9 +31,10 @@ const handler: OperationHandler = async (ctx) => {
 		const status = (error as { statusCode?: number; response?: { status?: number } })?.statusCode
 			?? (error as { statusCode?: number; response?: { status?: number } })?.response?.status;
 		if (status === 404) {
-			ctx.nodeError(
-				`Request failed with status code 404 — Settlement Report file "${fileName}" not found. Use 'List Settlement Reports' to get the available file names.`,
-			);
+			ctx.apiError(error, {
+				message: `Settlement Report file "${fileName}" was not found`,
+				description: "Use 'Get Many Settlement Reports' to retrieve the available file names.",
+			});
 		}
 		throw error;
 	}

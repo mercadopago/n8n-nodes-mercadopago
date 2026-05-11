@@ -49,6 +49,7 @@ export type HandlerCtx = {
 	credentials: MercadoPagoCredentials;
 	sftpCredentials?: SftpCredentials;
 	nodeError: (msg: string) => never;
+	apiError: (error: unknown, options?: { message?: string; description?: string }) => never;
 	helpers: IExecuteFunctions['helpers'];
 };
 

@@ -5,6 +5,8 @@ import {
 	INodeTypeDescription,
 	NodeConnectionTypes,
 	type IHttpRequestOptions,
+	type JsonObject,
+	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -61,18 +63,18 @@ export class MercadoPago implements INodeType {
 			},
 		],
 		properties: [
-			// Selector de recurso (agrupador)
+			// Resource selector (grouping)
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
 				options: [
-					{ name: 'Payments', value: 'payments', description: 'Payment Operations' },
+					{ name: 'Payment', value: 'payments', description: 'Create payment links and manage checkout preferences' },
 					{ name: 'Reporting', value: 'reporting', description: 'Release Report operations' },
 				],
 				default: 'payments',
 			},
-			// Selector de operación (Payments)
+			// Operation selector (Payments)
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -84,7 +86,7 @@ export class MercadoPago implements INodeType {
 				default: 'createPaymentLink',
 				noDataExpression: true,
 			},
-			// Selector de operación (Reporting)
+			// Operation selector (Reporting)
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -104,7 +106,7 @@ export class MercadoPago implements INodeType {
 				noDataExpression: true,
 			},
 
-			// ---- Props de createPaymentLink ----
+			// ---- createPaymentLink properties ----
 			{
 				displayName: 'Items',
 				name: 'items',
@@ -298,7 +300,7 @@ export class MercadoPago implements INodeType {
 				],
 			},
 
-			// ---- Props de listReleaseReports ----
+			// ---- listReleaseReports properties ----
 			{
 				displayName: 'Return All',
 				name: 'returnAll',
@@ -327,7 +329,7 @@ export class MercadoPago implements INodeType {
 				],
 			},
 
-			// ---- Props de configureReleaseReport ----
+			// ---- Report configuration properties ----
 			{
 				displayName: 'Columns',
 				name: 'columns',
@@ -501,7 +503,7 @@ export class MercadoPago implements INodeType {
 				],
 			},
 
-			// ---- Props de downloadReleaseReport ----
+			// ---- Download properties ----
 			{
 				displayName: 'File Name',
 				name: 'file_name',
@@ -520,7 +522,7 @@ export class MercadoPago implements INodeType {
 		const opRaw = this.getNodeParameter('operation', 0) as string;
 		const op: OperationName | undefined = isOperationName(opRaw) ? opRaw : undefined;
 
-		// Carga credenciales una vez
+		// Load credentials once
 		const credentials = (await this.getCredentials('mercadoPagoApi')) as MercadoPagoCredentials;
 
 		// Load optional SFTP credentials (not configured = undefined, expected)
@@ -549,44 +551,7 @@ export class MercadoPago implements INodeType {
 				},
 			};
 
-			try {
-				return (await this.helpers.httpRequest(options)) as TResponse;
-			} catch (error) {
-				const err = error as { statusCode?: number; response?: { status?: number; body?: unknown }; body?: unknown };
-				const status = err?.statusCode ?? err?.response?.status;
-				let mpMessage = '';
-				try {
-					const rawBody = err?.response?.body ?? err?.body;
-					let parsed: { message?: string; error?: string; cause?: unknown[] } = {};
-					if (typeof rawBody === 'string') {
-						parsed = JSON.parse(rawBody);
-					} else if (rawBody && typeof rawBody === 'object') {
-						parsed = rawBody as typeof parsed;
-					}
-					const parts: string[] = [];
-					if (parsed.error) parts.push(parsed.error);
-					if (parsed.message) parts.push(parsed.message);
-					if (Array.isArray(parsed.cause) && parsed.cause.length) {
-						const causeStr = parsed.cause.map((c) => {
-							if (typeof c === 'string') return c;
-							const obj = c as { code?: string; description?: string };
-							return obj.description ?? obj.code ?? JSON.stringify(c);
-						}).join(', ');
-						parts.push(`Causes: ${causeStr}`);
-					}
-					mpMessage = parts.join(' — ');
-				} catch {
-					// If body parsing fails, use original error
-				}
-				if (mpMessage) {
-					throw new NodeOperationError(
-						this.getNode(),
-						`Request failed with status code ${status ?? 'unknown'} — ${mpMessage}`,
-						{ description: (error as Error).message },
-					);
-				}
-				throw error;
-			}
+			return (await this.helpers.httpRequest(options)) as TResponse;
 		};
 
 		const makeCtx = (i: number): HandlerCtx => ({
@@ -597,6 +562,12 @@ export class MercadoPago implements INodeType {
 			helpers: this.helpers,
 			nodeError: (msg: string) => {
 				throw new NodeOperationError(this.getNode(), msg, { itemIndex: i });
+			},
+			apiError: (error: unknown, options?: { message?: string; description?: string }) => {
+				throw new NodeApiError(this.getNode(), error as JsonObject, {
+					itemIndex: i,
+					...(options ?? {}),
+				});
 			},
 			request: makeRequest,
 		});
@@ -611,7 +582,7 @@ export class MercadoPago implements INodeType {
 					throw new NodeOperationError(this.getNode(), `Unsupported operation: ${op}`, { itemIndex: i });
 				}
 
-				// Usa exactamente la misma firma que HandlerCtx para evitar incompatibilidades de tipos
+				// Use the exact HandlerCtx signature to avoid type incompatibilities
 				const ctx = makeCtx(i);
 
 				const res = await handler(ctx);
@@ -622,11 +593,14 @@ export class MercadoPago implements INodeType {
 				);
 				returnData.push(...execData);
 			} catch (error) {
+				const wrapped = (error instanceof NodeOperationError || error instanceof NodeApiError)
+					? error
+					: new NodeApiError(this.getNode(), error as JsonObject, { itemIndex: i });
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: (error as Error).message } });
+					returnData.push({ json: { error: (wrapped as Error).message } });
 					continue;
 				}
-				throw error;
+				throw wrapped;
 			}
 		}
 
