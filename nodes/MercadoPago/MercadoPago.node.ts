@@ -82,9 +82,9 @@ export class MercadoPago implements INodeType {
 					show: {
 						resource: ['reporting'],
 						operation: [
-							'configureReleaseReport',
+							'createOrUpdateReleaseReportConfig',
 							
-							'configureSettlementReport',
+							'createOrUpdateSettlementReportConfig',
 							
 						],
 					},
@@ -122,16 +122,16 @@ export class MercadoPago implements INodeType {
 				type: 'options',
 				displayOptions: { show: { resource: ['reporting'] } },
 				options: [
-					{ name: 'Get Many Release Reports', value: 'listReleaseReports', description: 'Retrieve a list of generated release reports' },
-					{ name: 'Get Many Settlement Reports', value: 'listSettlementReports', description: 'Retrieve a list of generated settlement reports' },
-					{ name: 'Create or Update Release Report Config', value: 'configureReleaseReport', description: 'Create a new release report configuration or update an existing one (upsert)' },
-					{ name: 'Create or Update Settlement Report Config', value: 'configureSettlementReport', description: 'Create a new settlement report configuration or update an existing one (upsert)' },
+					{ name: 'Get Many Release Reports', value: 'getManyReleaseReports', description: 'Retrieve a list of generated release reports' },
+					{ name: 'Get Many Settlement Reports', value: 'getManySettlementReports', description: 'Retrieve a list of generated settlement reports' },
+					{ name: 'Create or Update Release Report Config', value: 'createOrUpdateReleaseReportConfig', description: 'Create a new release report configuration or update an existing one (upsert)' },
+					{ name: 'Create or Update Settlement Report Config', value: 'createOrUpdateSettlementReportConfig', description: 'Create a new settlement report configuration or update an existing one (upsert)' },
 					{ name: 'Get Release Report Config', value: 'getReleaseReportConfig', description: 'Retrieve the current release report configuration for the account' },
 					{ name: 'Get Settlement Report Config', value: 'getSettlementReportConfig', description: 'Retrieve the current settlement report configuration for the account' },
 					{ name: 'Download Release Report', value: 'downloadReleaseReport', description: 'Download a generated release report file as CSV' },
 					{ name: 'Download Settlement Report', value: 'downloadSettlementReport', description: 'Download a generated settlement report file as CSV' },
 				],
-				default: 'listReleaseReports',
+				default: 'getManyReleaseReports',
 				noDataExpression: true,
 			},
 
@@ -261,7 +261,7 @@ export class MercadoPago implements INodeType {
 				type: 'fixedCollection',
 				typeOptions: { multipleValues: true },
 				default: {},
-				displayOptions: { show: { resource: ['reporting'], operation: ['configureSettlementReport'] } },
+				displayOptions: { show: { resource: ['reporting'], operation: ['createOrUpdateSettlementReportConfig'] } },
 				placeholder: 'Add Column',
 				options: [
 					{
@@ -350,7 +350,7 @@ export class MercadoPago implements INodeType {
 				type: 'boolean',
 				description: 'Whether to return all results or only up to a given limit',
 				default: true,
-				displayOptions: { show: { resource: ['reporting'], operation: ['listReleaseReports', 'listSettlementReports'] } },
+				displayOptions: { show: { resource: ['reporting'], operation: ['getManyReleaseReports', 'getManySettlementReports'] } },
 			},
 			{
 				displayName: 'Limit',
@@ -358,14 +358,14 @@ export class MercadoPago implements INodeType {
 				type: 'number',
 				typeOptions: { minValue: 1, maxValue: 1000 },
 				default: 100,
-				displayOptions: { show: { resource: ['reporting'], operation: ['listReleaseReports', 'listSettlementReports'], returnAll: [false] } },
+				displayOptions: { show: { resource: ['reporting'], operation: ['getManyReleaseReports', 'getManySettlementReports'], returnAll: [false] } },
 			},
 			{
 				displayName: 'Filters',
 				name: 'reportFilters',
 				type: 'collection',
 				default: {},
-				displayOptions: { show: { resource: ['reporting'], operation: ['listReleaseReports', 'listSettlementReports'] } },
+				displayOptions: { show: { resource: ['reporting'], operation: ['getManyReleaseReports', 'getManySettlementReports'] } },
 				placeholder: 'Add Filter',
 				options: [
 					{ displayName: 'Offset', name: 'offset', type: 'number', typeOptions: { minValue: 0 }, default: 0 },
@@ -380,7 +380,7 @@ export class MercadoPago implements INodeType {
 				type: 'fixedCollection',
 				typeOptions: { multipleValues: true },
 				default: {},
-				displayOptions: { show: { resource: ['reporting'], operation: ['configureReleaseReport'] } },
+				displayOptions: { show: { resource: ['reporting'], operation: ['createOrUpdateReleaseReportConfig'] } },
 				placeholder: 'Add Column',
 				options: [
 					{
@@ -457,7 +457,7 @@ export class MercadoPago implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'e.g. monthly-',
-				displayOptions: { show: { operation: ['configureReleaseReport',  'configureSettlementReport'] } },
+				displayOptions: { show: { operation: ['createOrUpdateReleaseReportConfig',  'createOrUpdateSettlementReportConfig'] } },
 				description: 'Prefix added to each generated report file name',
 				required: true,
 			},
@@ -467,7 +467,7 @@ export class MercadoPago implements INodeType {
 				type: 'fixedCollection',
 				typeOptions: { multipleValues: false },
 				default: {},
-				displayOptions: { show: { operation: ['configureReleaseReport',  'configureSettlementReport'] } },
+				displayOptions: { show: { operation: ['createOrUpdateReleaseReportConfig',  'createOrUpdateSettlementReportConfig'] } },
 				options: [
 					{
 						name: 'frequencyValues',
@@ -490,7 +490,7 @@ export class MercadoPago implements INodeType {
 				type: 'collection',
 				placeholder: 'Add Field',
 				default: {},
-				displayOptions: { show: { operation: ['configureReleaseReport'] } },
+				displayOptions: { show: { operation: ['createOrUpdateReleaseReportConfig'] } },
 				options: [
 					{ displayName: 'Separator', name: 'separator', type: 'string', default: '', placeholder: 'e.g. ,', description: 'Character used to separate columns in the CSV file' },
 					{ displayName: 'Display Timezone', name: 'display_timezone', type: 'string', default: 'GMT-04', placeholder: 'e.g. GMT-04', description: 'Timezone used for date and time fields in the report' },
@@ -524,7 +524,7 @@ export class MercadoPago implements INodeType {
 				type: 'collection',
 				placeholder: 'Add Field',
 				default: {},
-				displayOptions: { show: { operation: ['configureSettlementReport'] } },
+				displayOptions: { show: { operation: ['createOrUpdateSettlementReportConfig'] } },
 				options: [
 					{ displayName: 'Separator', name: 'separator', type: 'string', default: '', placeholder: 'e.g. ,', description: 'Character used to separate columns in the CSV file' },
 					{ displayName: 'Display Timezone', name: 'display_timezone', type: 'string', default: 'GMT-04', placeholder: 'e.g. GMT-04', description: 'Timezone used for date and time fields in the report' },
