@@ -55,6 +55,11 @@ export function makeMockCtx(options: MockCtxOptions = {}) {
       throw new Error(message);
     },
 
+    apiError(error: unknown, opts?: { message?: string; description?: string }): never {
+      const msg = opts?.message ?? (error as Error)?.message ?? 'API error';
+      throw new Error(msg);
+    },
+
     // Exposed for assertions in tests
     lastRequest: state.lastRequest as RequestInit | undefined,
 

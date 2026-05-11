@@ -45,7 +45,7 @@ const handler: OperationHandler = async (ctx) => {
 		return out;
 	}
 
-	// returnAll = false → una sola página y recorte
+	// returnAll = false → single page, then slice
 	const res = await baseRequest({ offset, limit: Math.min(pageSize, limit) });
 	const batch = extractResults(res);
 	return batch.slice(0, limit);

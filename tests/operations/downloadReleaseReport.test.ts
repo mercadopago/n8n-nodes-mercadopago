@@ -24,7 +24,7 @@ describe('downloadReleaseReport operation', () => {
     }) as TestContext;
 
     await expect(downloadReleaseReport(ctx)).rejects.toThrow(
-      'Parameter "File Name" is required.'
+      'Please select or enter a release report'
     );
   });
 

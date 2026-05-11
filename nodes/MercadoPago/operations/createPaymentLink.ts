@@ -223,11 +223,24 @@ const handler: OperationHandler = async (ctx) => {
 	}
 
 	// Request
-	const response = await ctx.request({
+	const response = await ctx.request<Record<string, unknown>>({
 		method: 'POST',
 		url: API_ENDPOINTS.CHECKOUT_PREFERENCES,
 		body,
 	});
+
+	const simplify = ctx.get<boolean>('simplify', true);
+	if (simplify && response && typeof response === 'object') {
+		return {
+			id: response.id,
+			init_point: response.init_point,
+			sandbox_init_point: response.sandbox_init_point,
+			external_reference: response.external_reference,
+			date_created: response.date_created,
+			date_of_expiration: response.date_of_expiration,
+			expires: response.expires,
+		};
+	}
 
 	return response;
 };

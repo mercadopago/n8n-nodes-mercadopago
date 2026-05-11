@@ -1,16 +1,47 @@
 import {
 	IExecuteFunctions,
+	type ILoadOptionsFunctions,
 	INodeExecutionData,
+	type INodeListSearchResult,
 	INodeType,
 	INodeTypeDescription,
 	NodeConnectionTypes,
 	type IHttpRequestOptions,
+	type JsonObject,
+	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
 import { HTTP_HEADERS } from '../../constants';
 
 import { operations, isOperationName, type HandlerCtx, type MercadoPagoCredentials, type SftpCredentials, type OperationName, type RequestInit } from './operations';
+
+/**
+ * Fetch the list of generated report files from the given list endpoint.
+ * Used by the Resource Locator's "From List" mode.
+ */
+async function fetchReportFiles(
+	this: ILoadOptionsFunctions,
+	url: string,
+): Promise<INodeListSearchResult> {
+	const credentials = (await this.getCredentials('mercadoPagoApi')) as MercadoPagoCredentials;
+	const response = (await this.helpers.httpRequest({
+		method: 'GET',
+		url,
+		headers: {
+			Authorization: `Bearer ${credentials.accessToken}`,
+			'X-Platform-Id': HTTP_HEADERS.X_PLATFORM_ID,
+		},
+	})) as { results?: Array<{ file_name?: string }> } | Array<{ file_name?: string }>;
+
+	const list = Array.isArray(response) ? response : (response.results ?? []);
+	const results = list
+		.map((item) => item?.file_name)
+		.filter((name): name is string => typeof name === 'string' && name.length > 0)
+		.map((name) => ({ name, value: name }));
+
+	return { results };
+}
 
 /**
  * n8n node: MercadoPago
@@ -61,18 +92,18 @@ export class MercadoPago implements INodeType {
 			},
 		],
 		properties: [
-			// Selector de recurso (agrupador)
+			// Resource selector (grouping)
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
 				options: [
-					{ name: 'Payments', value: 'payments', description: 'Payment Operations' },
+					{ name: 'Payment', value: 'payments', description: 'Create payment links and manage checkout preferences' },
 					{ name: 'Reporting', value: 'reporting', description: 'Release Report operations' },
 				],
 				default: 'payments',
 			},
-			// Selector de operación (Payments)
+			// Operation selector (Payments)
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -84,27 +115,27 @@ export class MercadoPago implements INodeType {
 				default: 'createPaymentLink',
 				noDataExpression: true,
 			},
-			// Selector de operación (Reporting)
+			// Operation selector (Reporting)
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
 				displayOptions: { show: { resource: ['reporting'] } },
 				options: [
-					{ name: 'List Release Reports', value: 'listReleaseReports', description: 'List previously created release reports (Reporting API)' },
-					{ name: 'List Settlement Reports', value: 'listSettlementReports', description: 'List previously created settlement reports (Reporting API)' },
-					{ name: 'Configure Release Report', value: 'configureReleaseReport', description: 'Create or update Release Report preferences (columns, frequency, delivery options)' },
-					{ name: 'Configure Settlement Report', value: 'configureSettlementReport', description: 'Create or update Settlement Report preferences (columns, frequency, delivery options)' },
-					{ name: 'Get Release Report Config', value: 'getReleaseReportConfig', description: 'Get current release report configuration for the account' },
-					{ name: 'Get Settlement Report Config', value: 'getSettlementReportConfig', description: 'Get current settlement report configuration for the account' },
-					{ name: 'Download Release Report', value: 'downloadReleaseReport', description: 'Download a generated release report file (CSV)' },
-					{ name: 'Download Settlement Report', value: 'downloadSettlementReport', description: 'Download a generated settlement report file (CSV)' },
+					{ name: 'Get Many Release Reports', value: 'listReleaseReports', description: 'Retrieve a list of generated release reports' },
+					{ name: 'Get Many Settlement Reports', value: 'listSettlementReports', description: 'Retrieve a list of generated settlement reports' },
+					{ name: 'Create or Update Release Report Config', value: 'configureReleaseReport', description: 'Create a new release report configuration or update an existing one (upsert)' },
+					{ name: 'Create or Update Settlement Report Config', value: 'configureSettlementReport', description: 'Create a new settlement report configuration or update an existing one (upsert)' },
+					{ name: 'Get Release Report Config', value: 'getReleaseReportConfig', description: 'Retrieve the current release report configuration for the account' },
+					{ name: 'Get Settlement Report Config', value: 'getSettlementReportConfig', description: 'Retrieve the current settlement report configuration for the account' },
+					{ name: 'Download Release Report', value: 'downloadReleaseReport', description: 'Download a generated release report file as CSV' },
+					{ name: 'Download Settlement Report', value: 'downloadSettlementReport', description: 'Download a generated settlement report file as CSV' },
 				],
 				default: 'listReleaseReports',
 				noDataExpression: true,
 			},
 
-			// ---- Props de createPaymentLink ----
+			// ---- createPaymentLink properties ----
 			{
 				displayName: 'Items',
 				name: 'items',
@@ -120,17 +151,25 @@ export class MercadoPago implements INodeType {
 						name: 'itemsValues',
 						displayName: 'Item',
 						values: [
-							{ displayName: 'ID', name: 'id', type: 'string', default: '', description: 'Item ID' },
-							{ displayName: 'Title', name: 'title', type: 'string', default: '', description: 'Item title', required: true },
-							{ displayName: 'Description', name: 'description', type: 'string', default: '', description: 'Item description' },
-							{ displayName: 'Picture URL', name: 'picture_url', type: 'string', default: '', description: 'Item image URL' },
-							{ displayName: 'Category ID', name: 'category_id', type: 'string', default: '', description: 'Item category' },
+							{ displayName: 'ID', name: 'id', type: 'string', default: '', placeholder: 'e.g. SKU-12345', description: 'Item ID' },
+							{ displayName: 'Title', name: 'title', type: 'string', default: '', placeholder: 'e.g. T-Shirt', description: 'Item title', required: true },
+							{ displayName: 'Description', name: 'description', type: 'string', default: '', placeholder: 'e.g. Premium cotton t-shirt', description: 'Item description' },
+							{ displayName: 'Picture URL', name: 'picture_url', type: 'string', default: '', placeholder: 'e.g. https://example.com/image.png', description: 'Item image URL' },
+							{ displayName: 'Category ID', name: 'category_id', type: 'string', default: '', placeholder: 'e.g. retail', description: 'Item category' },
 							{ displayName: 'Quantity', name: 'quantity', type: 'number', typeOptions: { minValue: 1 }, default: 1, description: 'Item quantity (must be ≥ 1)', required: true },
-							{ displayName: 'Currency ID', name: 'currency_id', type: 'string', default: '', description: 'Currency code (e.g. BRL, USD)' },
+							{ displayName: 'Currency ID', name: 'currency_id', type: 'string', default: '', placeholder: 'e.g. ARS', description: 'Currency code (e.g. BRL, USD, ARS)' },
 							{ displayName: 'Unit Price', name: 'unit_price', type: 'number', default: 1, description: 'Unit price — must be greater than 0. Use integer values for currencies that do not support decimals (e.g. CLP)', required: true },
 						],
 					},
 				],
+			},
+			{
+				displayName: 'Simplify',
+				name: 'simplify',
+				type: 'boolean',
+				default: true,
+				displayOptions: { show: { resource: ['payments'], operation: ['createPaymentLink'] } },
+				description: 'Whether to return a simplified version of the response instead of the raw data',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -145,37 +184,42 @@ export class MercadoPago implements INodeType {
 						name: 'external_reference',
 						type: 'string',
 						default: '',
+						placeholder: 'e.g. order-12345',
 						description:
-							'Max 64 chars. Allowed: letters (a-z, A-Z), numbers (0-9), hyphen (-), underscore (_).',
+							'Maximum 64 characters. Allowed: letters (a-z, A-Z), numbers (0-9), hyphen (-), underscore (_).',
 					},
 					{
 						displayName: 'Notification URL',
 						name: 'notification_url',
 						type: 'string',
 						default: '',
+						placeholder: 'e.g. https://example.com/webhook',
 						description: "HTTPS only. Where you'll receive payment status notifications.",
 					},
-					{ displayName: 'Binary Mode', name: 'binary_mode', type: 'boolean', default: false },
+					{ displayName: 'Binary Mode', name: 'binary_mode', type: 'boolean', default: false, description: 'Whether to require an explicit approved or rejected response (no pending state)' },
 					{
 						displayName: 'Statement Descriptor',
 						name: 'statement_descriptor',
 						type: 'string',
 						default: '',
-						description: 'Max 13 chars.',
+						placeholder: 'e.g. MYCOMPANY',
+						description: 'Maximum 13 characters. Shown on the buyer\'s credit card statement.',
 					},
 					{
 						displayName: 'Expiration Date From',
 						name: 'expiration_date_from',
 						type: 'string',
 						default: '',
-						description: "ISO with TZ: yyyy-MM-dd'T'HH:mm:ss(.SSS)(Z|±HH:mm)",
+						placeholder: 'e.g. 2024-12-31T23:59:59-03:00',
+						description: "ISO 8601 format with timezone (yyyy-MM-dd'T'HH:mm:ss(.SSS)(Z|±HH:mm))",
 					},
 					{
 						displayName: 'Expiration Date To',
 						name: 'expiration_date_to',
 						type: 'string',
 						default: '',
-						description: "ISO with TZ: yyyy-MM-dd'T'HH:mm:ss(.SSS)(Z|±HH:mm)",
+						placeholder: 'e.g. 2024-12-31T23:59:59-03:00',
+						description: "ISO 8601 format with timezone (yyyy-MM-dd'T'HH:mm:ss(.SSS)(Z|±HH:mm))",
 					},
 					{
 						displayName: 'Auto Return',
@@ -187,7 +231,7 @@ export class MercadoPago implements INodeType {
 							{ name: 'All', value: 'all' },
 						],
 						default: 'none',
-						description: 'Requires Back URLs → Success when Approved/All.',
+						description: "Requires 'Back URLs → Success' when 'Approved' or 'All' is selected.",
 					},
 					{
 						displayName: 'Back URLs',
@@ -202,9 +246,9 @@ export class MercadoPago implements INodeType {
 								name: 'backUrlsValues',
 								displayName: 'URLs',
 								values: [
-									{ displayName: 'Success URL', name: 'success', type: 'string', default: '' },
-									{ displayName: 'Pending URL', name: 'pending', type: 'string', default: '' },
-									{ displayName: 'Failure URL', name: 'failure', type: 'string', default: '' },
+									{ displayName: 'Success URL', name: 'success', type: 'string', default: '', placeholder: 'e.g. https://example.com/success', description: 'URL to redirect to after a successful payment' },
+									{ displayName: 'Pending URL', name: 'pending', type: 'string', default: '', placeholder: 'e.g. https://example.com/pending', description: 'URL to redirect to after a pending payment' },
+									{ displayName: 'Failure URL', name: 'failure', type: 'string', default: '', placeholder: 'e.g. https://example.com/failed', description: 'URL to redirect to when a payment is rejected' },
 								],
 							},
 						],
@@ -290,6 +334,7 @@ export class MercadoPago implements INodeType {
 								name: 'custom_key',
 								type: 'string',
 								default: '',
+								placeholder: 'e.g. CUSTOM_COLUMN',
 								displayOptions: { show: { keySource: ['custom'] } },
 								description: 'Enter a custom key if not listed above',
 							},
@@ -298,11 +343,12 @@ export class MercadoPago implements INodeType {
 				],
 			},
 
-			// ---- Props de listReleaseReports ----
+			// ---- listReleaseReports properties ----
 			{
 				displayName: 'Return All',
 				name: 'returnAll',
 				type: 'boolean',
+				description: 'Whether to return all results or only up to a given limit',
 				default: true,
 				displayOptions: { show: { resource: ['reporting'], operation: ['listReleaseReports', 'listSettlementReports'] } },
 			},
@@ -327,7 +373,7 @@ export class MercadoPago implements INodeType {
 				],
 			},
 
-			// ---- Props de configureReleaseReport ----
+			// ---- Report configuration properties ----
 			{
 				displayName: 'Columns',
 				name: 'columns',
@@ -397,6 +443,7 @@ export class MercadoPago implements INodeType {
 								name: 'custom_key',
 								type: 'string',
 								default: '',
+								placeholder: 'e.g. CUSTOM_COLUMN',
 								displayOptions: { show: { keySource: ['custom'] } },
 								description: 'Enter a custom key if not listed above',
 							},
@@ -409,8 +456,9 @@ export class MercadoPago implements INodeType {
 				name: 'file_name_prefix',
 				type: 'string',
 				default: '',
+				placeholder: 'e.g. monthly-',
 				displayOptions: { show: { operation: ['configureReleaseReport',  'configureSettlementReport'] } },
-				description: 'Prefix for the generated report file name',
+				description: 'Prefix added to each generated report file name',
 				required: true,
 			},
 			{
@@ -444,9 +492,9 @@ export class MercadoPago implements INodeType {
 				default: {},
 				displayOptions: { show: { operation: ['configureReleaseReport'] } },
 				options: [
-					{ displayName: 'Separator', name: 'separator', type: 'string', default: '' },
-					{ displayName: 'Display Timezone', name: 'display_timezone', type: 'string', default: 'GMT-04' },
-					{ displayName: 'Report Translation', name: 'report_translation', type: 'string', default: 'es' },
+					{ displayName: 'Separator', name: 'separator', type: 'string', default: '', placeholder: 'e.g. ,', description: 'Character used to separate columns in the CSV file' },
+					{ displayName: 'Display Timezone', name: 'display_timezone', type: 'string', default: 'GMT-04', placeholder: 'e.g. GMT-04', description: 'Timezone used for date and time fields in the report' },
+					{ displayName: 'Report Translation', name: 'report_translation', type: 'string', default: 'es', placeholder: 'e.g. es', description: "Language code used for report labels (e.g. 'es', 'en', 'pt')" },
 					{
 						displayName: 'Notification Email List',
 						name: 'notification_email_list',
@@ -458,16 +506,16 @@ export class MercadoPago implements INodeType {
 								name: 'emails',
 								displayName: 'Email',
 								values: [
-									{ displayName: 'Value', name: 'value', type: 'string', default: '' },
+									{ displayName: 'Email', name: 'value', type: 'string', default: '', placeholder: 'e.g. finance@example.com', description: 'Email address to notify when reports are generated' },
 								],
 							},
 						],
 					},
-					{ displayName: 'Include Withdrawal At End', name: 'include_withdrawal_at_end', type: 'boolean', default: false },
-					{ displayName: 'Check Available Balance', name: 'check_available_balance', type: 'boolean', default: false },
-					{ displayName: 'Compensate Detail', name: 'compensate_detail', type: 'boolean', default: false },
-					{ displayName: 'Execute After Withdrawal', name: 'execute_after_withdrawal', type: 'boolean', default: false },
-					{ displayName: 'Scheduled', name: 'scheduled', type: 'boolean', default: false },
+					{ displayName: 'Include Withdrawal At End', name: 'include_withdrawal_at_end', type: 'boolean', default: false, description: 'Whether to include withdrawals at the end of the report' },
+					{ displayName: 'Check Available Balance', name: 'check_available_balance', type: 'boolean', default: false, description: 'Whether to validate available balance against transactions in the report' },
+					{ displayName: 'Compensate Detail', name: 'compensate_detail', type: 'boolean', default: false, description: 'Whether to add compensation details to the report rows' },
+					{ displayName: 'Execute After Withdrawal', name: 'execute_after_withdrawal', type: 'boolean', default: false, description: 'Whether to generate the report only after a withdrawal occurs' },
+					{ displayName: 'Scheduled', name: 'scheduled', type: 'boolean', default: false, description: 'Whether to schedule the report for periodic automatic generation' },
 				],
 			},
 			{
@@ -478,9 +526,9 @@ export class MercadoPago implements INodeType {
 				default: {},
 				displayOptions: { show: { operation: ['configureSettlementReport'] } },
 				options: [
-					{ displayName: 'Separator', name: 'separator', type: 'string', default: '' },
-					{ displayName: 'Display Timezone', name: 'display_timezone', type: 'string', default: 'GMT-04' },
-					{ displayName: 'Report Translation', name: 'report_translation', type: 'string', default: 'es' },
+					{ displayName: 'Separator', name: 'separator', type: 'string', default: '', placeholder: 'e.g. ,', description: 'Character used to separate columns in the CSV file' },
+					{ displayName: 'Display Timezone', name: 'display_timezone', type: 'string', default: 'GMT-04', placeholder: 'e.g. GMT-04', description: 'Timezone used for date and time fields in the report' },
+					{ displayName: 'Report Translation', name: 'report_translation', type: 'string', default: 'es', placeholder: 'e.g. es', description: "Language code used for report labels (e.g. 'es', 'en', 'pt')" },
 					{
 						displayName: 'Notification Email List',
 						name: 'notification_email_list',
@@ -492,26 +540,80 @@ export class MercadoPago implements INodeType {
 								name: 'emails',
 								displayName: 'Email',
 								values: [
-									{ displayName: 'Value', name: 'value', type: 'string', default: '' },
+									{ displayName: 'Email', name: 'value', type: 'string', default: '', placeholder: 'e.g. finance@example.com', description: 'Email address to notify when reports are generated' },
 								],
 							},
 						],
 					},
-					{ displayName: 'Scheduled', name: 'scheduled', type: 'boolean', default: false },
+					{ displayName: 'Scheduled', name: 'scheduled', type: 'boolean', default: false, description: 'Whether to schedule the report for periodic automatic generation' },
 				],
 			},
 
-			// ---- Props de downloadReleaseReport ----
+			// ---- Download properties ----
 			{
-				displayName: 'File Name',
+				displayName: 'File',
 				name: 'file_name',
-				type: 'string',
-				default: '',
-				displayOptions: { show: { resource: ['reporting'], operation: ['downloadReleaseReport', 'downloadSettlementReport'] } },
-				description: 'File name to download, e.g. report_2024-09.csv',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
 				required: true,
+				displayOptions: { show: { resource: ['reporting'], operation: ['downloadReleaseReport'] } },
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						typeOptions: {
+							searchListMethod: 'getReleaseReportFiles',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'By Name',
+						name: 'name',
+						type: 'string',
+						placeholder: 'e.g. release-report-202409.csv',
+					},
+				],
+				description: 'Release report file to download',
+			},
+			{
+				displayName: 'File',
+				name: 'file_name',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: true,
+				displayOptions: { show: { resource: ['reporting'], operation: ['downloadSettlementReport'] } },
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						typeOptions: {
+							searchListMethod: 'getSettlementReportFiles',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'By Name',
+						name: 'name',
+						type: 'string',
+						placeholder: 'e.g. settlement-report-202409.csv',
+					},
+				],
+				description: 'Settlement report file to download',
 			},
 		],
+	};
+
+	methods = {
+		listSearch: {
+			async getReleaseReportFiles(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
+				return await fetchReportFiles.call(this, 'https://api.mercadopago.com/v1/account/release_report/list');
+			},
+			async getSettlementReportFiles(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
+				return await fetchReportFiles.call(this, 'https://api.mercadopago.com/v1/account/settlement_report/list');
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -520,7 +622,7 @@ export class MercadoPago implements INodeType {
 		const opRaw = this.getNodeParameter('operation', 0) as string;
 		const op: OperationName | undefined = isOperationName(opRaw) ? opRaw : undefined;
 
-		// Carga credenciales una vez
+		// Load credentials once
 		const credentials = (await this.getCredentials('mercadoPagoApi')) as MercadoPagoCredentials;
 
 		// Load optional SFTP credentials (not configured = undefined, expected)
@@ -549,44 +651,7 @@ export class MercadoPago implements INodeType {
 				},
 			};
 
-			try {
-				return (await this.helpers.httpRequest(options)) as TResponse;
-			} catch (error) {
-				const err = error as { statusCode?: number; response?: { status?: number; body?: unknown }; body?: unknown };
-				const status = err?.statusCode ?? err?.response?.status;
-				let mpMessage = '';
-				try {
-					const rawBody = err?.response?.body ?? err?.body;
-					let parsed: { message?: string; error?: string; cause?: unknown[] } = {};
-					if (typeof rawBody === 'string') {
-						parsed = JSON.parse(rawBody);
-					} else if (rawBody && typeof rawBody === 'object') {
-						parsed = rawBody as typeof parsed;
-					}
-					const parts: string[] = [];
-					if (parsed.error) parts.push(parsed.error);
-					if (parsed.message) parts.push(parsed.message);
-					if (Array.isArray(parsed.cause) && parsed.cause.length) {
-						const causeStr = parsed.cause.map((c) => {
-							if (typeof c === 'string') return c;
-							const obj = c as { code?: string; description?: string };
-							return obj.description ?? obj.code ?? JSON.stringify(c);
-						}).join(', ');
-						parts.push(`Causes: ${causeStr}`);
-					}
-					mpMessage = parts.join(' — ');
-				} catch {
-					// If body parsing fails, use original error
-				}
-				if (mpMessage) {
-					throw new NodeOperationError(
-						this.getNode(),
-						`Request failed with status code ${status ?? 'unknown'} — ${mpMessage}`,
-						{ description: (error as Error).message },
-					);
-				}
-				throw error;
-			}
+			return (await this.helpers.httpRequest(options)) as TResponse;
 		};
 
 		const makeCtx = (i: number): HandlerCtx => ({
@@ -597,6 +662,12 @@ export class MercadoPago implements INodeType {
 			helpers: this.helpers,
 			nodeError: (msg: string) => {
 				throw new NodeOperationError(this.getNode(), msg, { itemIndex: i });
+			},
+			apiError: (error: unknown, options?: { message?: string; description?: string }) => {
+				throw new NodeApiError(this.getNode(), error as JsonObject, {
+					itemIndex: i,
+					...(options ?? {}),
+				});
 			},
 			request: makeRequest,
 		});
@@ -611,7 +682,7 @@ export class MercadoPago implements INodeType {
 					throw new NodeOperationError(this.getNode(), `Unsupported operation: ${op}`, { itemIndex: i });
 				}
 
-				// Usa exactamente la misma firma que HandlerCtx para evitar incompatibilidades de tipos
+				// Use the exact HandlerCtx signature to avoid type incompatibilities
 				const ctx = makeCtx(i);
 
 				const res = await handler(ctx);
@@ -622,11 +693,14 @@ export class MercadoPago implements INodeType {
 				);
 				returnData.push(...execData);
 			} catch (error) {
+				const wrapped = (error instanceof NodeOperationError || error instanceof NodeApiError)
+					? error
+					: new NodeApiError(this.getNode(), error as JsonObject, { itemIndex: i });
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: (error as Error).message } });
+					returnData.push({ json: { error: (wrapped as Error).message } });
 					continue;
 				}
-				throw error;
+				throw wrapped;
 			}
 		}
 
