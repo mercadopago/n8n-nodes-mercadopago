@@ -1,6 +1,6 @@
 {
   "name": "@mercadopago/n8n-nodes-mercadopago",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "Community node for Mercado Pago",
   "keywords": [
     "n8n-community-node-package",
