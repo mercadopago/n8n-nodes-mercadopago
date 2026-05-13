@@ -33,8 +33,10 @@ const handler: OperationHandler = async (ctx) => {
 			content: typeof response === 'string' ? response : String(response),
 		};
 	} catch (error) {
-		const status = (error as { statusCode?: number; response?: { status?: number } })?.statusCode
-			?? (error as { statusCode?: number; response?: { status?: number } })?.response?.status;
+		const e = error as { statusCode?: number; httpCode?: number | string; response?: { status?: number; statusCode?: number } };
+		const status = [e?.statusCode, e?.httpCode, e?.response?.status, e?.response?.statusCode]
+			.map((s) => (typeof s === 'string' ? Number(s) : s))
+			.find((s) => typeof s === 'number' && !Number.isNaN(s));
 		if (status === 404) {
 			ctx.apiError(error, {
 				message: `Settlement Report file "${fileName}" was not found`,

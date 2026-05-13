@@ -79,8 +79,16 @@ const handler: OperationHandler = async (ctx) => {
 			body,
 		});
 	} catch (error) {
-		const status = (error as { statusCode?: number; response?: { status?: number } })?.statusCode
-			?? (error as { statusCode?: number; response?: { status?: number } })?.response?.status;
+		const e = error as { statusCode?: number; httpCode?: number | string; response?: { status?: number; statusCode?: number } };
+		const statusCandidates = [
+			e?.statusCode,
+			e?.httpCode,
+			e?.response?.status,
+			e?.response?.statusCode,
+		];
+		const status = statusCandidates
+			.map((s) => (typeof s === 'string' ? Number(s) : s))
+			.find((s) => typeof s === 'number' && !Number.isNaN(s));
 		if (status === 409) {
 			return await ctx.request({
 				method: 'PUT',
