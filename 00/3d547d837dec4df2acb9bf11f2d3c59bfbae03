@@ -1,0 +1,22 @@
+.github/workflows/ci.yml
+  s_6ce6bd3d6d99e4::t_77bf930ac5f457 1-54
+.github/workflows/smart-security-fix.yml
+  s_6ce6bd3d6d99e4::t_3eef9bef69e566 199
+  s_6ce6bd3d6d99e4::t_a108b406e6ac22 95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "003d547d837dec4df2acb9bf11f2d3c59bfbae03",
+  "prompts": {},
+  "sessions": {
+    "s_6ce6bd3d6d99e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "050c7cc1-e0ac-45ed-93c9-08b944b962a3",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "sheredia_meli <samuel.heredia@mercadolibre.cl>"
+    }
+  }
+}
