@@ -92,7 +92,7 @@ jobs:
       - name: 🔧 Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '20.15'  # Tu versión especificada en package.json
+          node-version: '22'  # Required by current devDeps (eslint v10 needs >=20.19, isolated-vm v6 needs >=22)
           cache: 'npm'
 
       # Paso 3: Instalar dependencias
@@ -196,7 +196,7 @@ jobs:
       - name: 🔧 Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '20.15'
+          node-version: '22'  # Required by current devDeps (eslint v10 needs >=20.19, isolated-vm v6 needs >=22)
           cache: 'npm'
 
       # Paso 3: Configurar Git
