@@ -236,7 +236,10 @@ jobs:
           # npm audit fix: Solo actualiza dependencias con vulnerabilidades
           # --package-lock-only: Solo actualiza lock file (más seguro)
           # Removemos --package-lock-only para que actualice de verdad
-          npm audit fix
+          # || true: tolerante a fallos — si un fix requiere --force, npm audit fix
+          # sale con código != 0; sin || true abortaría el job antes del paso de
+          # notificación (ver issue #104).
+          npm audit fix || true
 
           # Verificar si hubo cambios
           if git diff --quiet package.json package-lock.json; then
@@ -349,9 +352,6 @@ jobs:
           🤖 Generado automaticamente por GitHub Actions
           PREOF
           )" \
-            --label "security" \
-            --label "automated" \
-            --label "dependencies" \
             --reviewer "samhermeli" \
             --reviewer "Harievilozanini" \
             --reviewer "franciscoramirezadasme" \
@@ -414,6 +414,17 @@ jobs:
               labels: ['security', 'help-wanted', 'priority-high', 'manual-fix-needed'],
               assignees: ['samhermeli', 'Harievilozanini']
             });
+
+      # Paso 15: Limpiar branch huérfana si el job falló después del push
+      # Razón: Si el push tuvo éxito pero un paso posterior (p. ej. gh pr create)
+      # falla, la branch queda huérfana en el remoto. Este paso la elimina para
+      # que no se acumule basura (ver issue #104).
+      - name: 🧹 Clean up orphan branch on failure
+        if: failure() && steps.branch.outputs.name != ''
+        run: |
+          git push origin --delete "${{ steps.branch.outputs.name }}" 2>/dev/null \
+            && echo "🧹 Branch huérfana eliminada: ${{ steps.branch.outputs.name }}" \
+            || echo "ℹ️  Nada que limpiar (la branch no llegó a pushearse)"
 
   # --------------------------------------------
   # JOB 3: Notificación para Review Manual
