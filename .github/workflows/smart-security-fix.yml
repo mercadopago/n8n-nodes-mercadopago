@@ -83,14 +83,14 @@ jobs:
     steps:
       # Paso 1: Checkout del código
       - name: 📥 Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       # Paso 2: Setup Node.js
       # Razón: Necesario para ejecutar npm audit
       - name: 🔧 Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '22'  # Required by current devDeps (eslint v10 needs >=20.19, isolated-vm v6 needs >=22)
           cache: 'npm'
@@ -186,7 +186,7 @@ jobs:
     steps:
       # Paso 1: Checkout
       - name: 📥 Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           # fetch-depth: 0 descarga historial completo (necesario para crear branches)
@@ -194,7 +194,7 @@ jobs:
 
       # Paso 2: Setup Node.js
       - name: 🔧 Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '22'  # Required by current devDeps (eslint v10 needs >=20.19, isolated-vm v6 needs >=22)
           cache: 'npm'
@@ -368,7 +368,7 @@ jobs:
           (steps.build.outcome == 'failure' ||
            steps.test.outcome == 'failure' ||
            steps.lint.outcome == 'failure')
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             // Determinar qué falló
@@ -434,7 +434,7 @@ jobs:
 
     steps:
       - name: 📝 Create issue for manual review
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             github.rest.issues.create({
