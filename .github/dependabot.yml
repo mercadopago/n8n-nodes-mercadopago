@@ -17,6 +17,12 @@ updates:
       time: "02:00"
       timezone: "UTC"
 
+    # ⏳ Cooldown: Espera 7 días antes de abrir una nueva PR para la misma dependencia
+    # Razón: Evita ataques a la cadena de suministro y reduce riesgos de introducir Breaking Changes inesperados que aún no hayan sido reportados a los Maintainers de la dependencia.
+    # Más información en: https://docs.zizmor.sh/audits/#dependabot-cooldown
+    cooldown:
+      default-days: 7
+
     # 📝 PRs abiertos simultáneamente: máximo 5
     # Razón: Evita saturar el repositorio con demasiados PRs
     open-pull-requests-limit: 5
@@ -90,6 +96,9 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "02:00"
+
+    cooldown:
+      default-days: 7
 
     labels:
       - "dependencies"
