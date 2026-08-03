@@ -41,10 +41,7 @@ on:
 # ============================================
 # PERMISSIONS
 # ============================================
-permissions:
-  contents: write        # Para merge
-  pull-requests: write   # Para aprobar y mergear PR
-  checks: read          # Para leer status de checks
+permissions: {} # Para evitar que el workflow tenga permisos de escritura por defecto. Se asignan permisos específicos en cada job.
 
 # ============================================
 # JOBS
@@ -62,6 +59,10 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       github.actor == 'github-actions[bot]' ||
       github.actor == 'dependabot[bot]'
+
+    permissions:
+      checks: read # Para verificar el estado de los checks.
+      pull-requests: read # Para obtener información de la pull request.
 
     # Outputs para siguiente job
     outputs:
@@ -264,6 +265,10 @@ jobs:
 
     # Solo ejecutar si el PR califica
     if: needs.evaluate-pr.outputs.should_merge == 'true'
+
+    permissions:
+      contents: write # Para aprobar y mergear la pull request
+      pull-requests: write # Para aprobar la pull request
 
     steps:
       # Paso 1: Aprobar el PR
