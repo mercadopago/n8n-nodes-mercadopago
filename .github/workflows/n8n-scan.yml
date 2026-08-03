@@ -1,13 +1,17 @@
 name: n8n Community Node Scan
+permissions: {}
 
 on:
   workflow_dispatch:
 
 jobs:
   scan:
+    name: Scan package with n8n community package scan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
@@ -16,3 +20,7 @@ jobs:
 
       - name: Run n8n community package scan
         run: npx @n8n/scan-community-package '@mercadopago/n8n-nodes-mercadopago'
+
+concurrency:
+  group: n8n-scan
+  cancel-in-progress: true
