@@ -80,7 +80,7 @@ jobs:
 
             // Si es workflow_dispatch, usar el número proporcionado
             if (context.eventName === 'workflow_dispatch') {
-              const prNumber = parseInt('${{ github.event.inputs.pr_number || 0 }}');
+              const prNumber = parseInt(`${PR_NUMBER}`);
               pr = await github.rest.pulls.get({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -121,6 +121,8 @@ jobs:
             console.log(`   Author: ${pr.user.login}`);
             console.log(`   Base: ${pr.base.ref}`);
             console.log(`   Labels: ${pr.labels.map(l => l.name).join(', ')}`);
+        env:
+          PR_NUMBER: ${{ github.event.inputs.pr_number || 0 }}
 
       # Paso 2: Evaluar criterios de auto-merge
       - name: 🎯 Evaluate auto-merge criteria
@@ -129,10 +131,10 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
-            const prNumber = parseInt('${{ steps.get-pr.outputs.number }}');
-            const author = '${{ steps.get-pr.outputs.author }}';
-            const base = '${{ steps.get-pr.outputs.base }}';
-            const labelsStr = '${{ steps.get-pr.outputs.labels }}';
+            const prNumber = parseInt(`${PR_NUMBER}`);
+            const author = `${PR_AUTHOR}`;
+            const base = `${PR_BASE}`;
+            const labelsStr = `${PR_LABELS}`;
             const labels = labelsStr ? labelsStr.split(',') : [];
 
             console.log('🔍 Evaluando criterios...');
@@ -177,6 +179,11 @@ jobs:
             } else {
               console.log('❌ PR NO califica para auto-merge');
             }
+        env:
+          PR_NUMBER: ${{ steps.get-pr.outputs.number }}
+          PR_AUTHOR: ${{ steps.get-pr.outputs.author }}
+          PR_BASE: ${{ steps.get-pr.outputs.base }}
+          PR_LABELS: ${{ steps.get-pr.outputs.labels }}
 
       # Paso 3: Verificar status de checks
       # Razón: Solo mergear si todos los checks pasan
@@ -185,7 +192,7 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
-            const prNumber = parseInt('${{ steps.get-pr.outputs.number }}');
+            const prNumber = parseInt(`${PR_NUMBER}`);
 
             // Esperar hasta 10 minutos para que los checks completen
             const maxWaitTime = 10 * 60 * 1000; // 10 minutos
@@ -244,6 +251,8 @@ jobs:
             if (Date.now() - startTime >= maxWaitTime) {
               core.setFailed('❌ Timeout esperando que los checks completen (10 minutos)');
             }
+        env:
+          PR_NUMBER: ${{ steps.get-pr.outputs.number }}
 
   # --------------------------------------------
   # JOB 2: Aprobar y Mergear PR
@@ -263,7 +272,7 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
-            const prNumber = parseInt('${{ needs.evaluate-pr.outputs.pr_number }}');
+            const prNumber = parseInt(`${PR_NUMBER}`);
 
             try {
               await github.rest.pulls.createReview({
@@ -295,6 +304,8 @@ jobs:
                 throw error;
               }
             }
+        env:
+          PR_NUMBER: ${{ needs.evaluate-pr.outputs.pr_number }}
 
       # Paso 2: Mergear el PR
       # Razón: Integrar los cambios a develop automáticamente
@@ -302,7 +313,7 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
-            const prNumber = parseInt('${{ needs.evaluate-pr.outputs.pr_number }}');
+            const prNumber = parseInt(`${PR_NUMBER}`);
 
             try {
               // Intentar merge con squash (tu preferencia según CONTRIBUTING.md)
@@ -311,13 +322,13 @@ jobs:
                 repo: context.repo.repo,
                 pull_number: prNumber,
                 merge_method: 'squash',  // Opciones: merge, squash, rebase
-                commit_title: '${{ needs.evaluate-pr.outputs.pr_title }}',
+                commit_title: `${PR_TITLE}`,
                 commit_message: `Auto-merged by security workflow
 
                 This PR was automatically merged because it passed all security and quality checks.
 
                 PR: #${prNumber}
-                Workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`
+                Workflow: `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}`
               });
 
               console.log('✅ PR merged successfully');
@@ -368,6 +379,12 @@ jobs:
 
               throw error;
             }
+        env:
+          PR_NUMBER: ${{ needs.evaluate-pr.outputs.pr_number }}
+          PR_TITLE: ${{ needs.evaluate-pr.outputs.pr_title }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
 
       # Paso 3: Limpiar branch (opcional)
       # Razón: Mantener el repositorio limpio
@@ -376,7 +393,7 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
-            const prNumber = parseInt('${{ needs.evaluate-pr.outputs.pr_number }}');
+            const prNumber = parseInt(`${PR_NUMBER}`);
 
             // Obtener información del PR
             const pr = await github.rest.pulls.get({
@@ -400,6 +417,8 @@ jobs:
               console.log(`ℹ️  No se pudo eliminar branch '${branchName}': ${error.message}`);
               // No fallar si no se puede eliminar el branch
             }
+        env:
+          PR_NUMBER: ${{ needs.evaluate-pr.outputs.pr_number }}
 
   # --------------------------------------------
   # JOB 3: Resumen
@@ -416,14 +435,14 @@ jobs:
           echo "# 🤖 Auto-Merge - Resumen" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          if [ "${{ needs.evaluate-pr.outputs.should_merge }}" == "true" ]; then
+          if [ "${SHOULD_MERGE}" == "true" ]; then
             echo "## ✅ PR Calificó para Auto-Merge" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "- **PR**: #${{ needs.evaluate-pr.outputs.pr_number }}" >> $GITHUB_STEP_SUMMARY
-            echo "- **Título**: ${{ needs.evaluate-pr.outputs.pr_title }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **PR**: #${PR_NUMBER}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Título**: ${PR_TITLE}" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
 
-            if [ "${{ needs.auto-merge.result }}" == "success" ]; then
+            if [ "${AUTOMERGE_RESULT}" == "success" ]; then
               echo "### 🎉 Merge Exitoso" >> $GITHUB_STEP_SUMMARY
               echo "" >> $GITHUB_STEP_SUMMARY
               echo "El PR fue aprobado y mergeado automáticamente a \`master\`." >> $GITHUB_STEP_SUMMARY
@@ -449,3 +468,8 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "---" >> $GITHUB_STEP_SUMMARY
           echo "🤖 Generado por Auto-Merge workflow" >> $GITHUB_STEP_SUMMARY
+        env:
+          SHOULD_MERGE: ${{ needs.evaluate-pr.outputs.should_merge }}
+          PR_NUMBER: ${{ needs.evaluate-pr.outputs.pr_number }}
+          PR_TITLE: ${{ needs.evaluate-pr.outputs.pr_title }}
+          AUTOMERGE_RESULT: ${{ needs.auto-merge.result }}
