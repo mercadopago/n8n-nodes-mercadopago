@@ -46,20 +46,7 @@ on:
     branches:
       - 'dependabot/**'
 
-# ============================================
-# PERMISSIONS (Permisos necesarios)
-# ============================================
-# Explicación: GitHub Actions necesita permisos explícitos para:
-# - contents: write → Crear branches y commits
-# - pull-requests: write → Crear y modificar PRs
-# - issues: write → Crear issues de notificación
-# - security-events: read → Leer alertas de seguridad
-permissions:
-  contents: write
-  pull-requests: write
-  issues: write
-  security-events: read
-  checks: read
+permissions: {} # Para evitar que el workflow tenga los mismos permisos en todos los Jobs. Se asignan permisos específicos en cada job.
 
 # ============================================
 # JOBS (Tareas a ejecutar)
@@ -72,6 +59,9 @@ jobs:
   analyze-vulnerabilities:
     name: 📊 Analizar Vulnerabilidades
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read # Para leer los archivos del repositorio.
 
     # Outputs: Estos valores estarán disponibles para jobs posteriores
     outputs:
@@ -186,6 +176,11 @@ jobs:
     if: |
       needs.analyze-vulnerabilities.outputs.has_vulnerabilities == 'true' &&
       needs.analyze-vulnerabilities.outputs.should_autofix == 'true'
+
+    permissions:
+      contents: write # Para crear branches y pushear commits.
+      issues: write # Para crear issues de notificación.
+      pull-requests: write # Para crear y modificar PRs.
 
     steps:
       # Paso 1: Checkout
@@ -466,6 +461,9 @@ jobs:
     if: |
       needs.analyze-vulnerabilities.outputs.has_vulnerabilities == 'true' &&
       needs.analyze-vulnerabilities.outputs.should_autofix == 'false'
+
+    permissions:
+      issues: write # Parar crear issues de notificación.
 
     steps:
       - name: 📝 Create issue for manual review
