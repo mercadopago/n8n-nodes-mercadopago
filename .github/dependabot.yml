@@ -74,11 +74,12 @@ updates:
     allow:
       - dependency-type: "all"
 
-    # 🚫 Ignorar actualizaciones específicas (opcional)
-    # Descomentar si necesitas ignorar alguna dependencia
-    # ignore:
-    #   - dependency-name: "n8n-workflow"
-    #     # Razón: peer dependency, actualizar manualmente
+    # Evitar propuestas para actualizar `typescript` a su versión 7 o superior,
+    # por que es incompatible con `@typescript-eslint` (peer `<6.1.0`) y termina
+    # rompiendo el comando `npm ci`.
+    ignore:
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
 
   # ============================================
   # GitHub Actions (workflows)
