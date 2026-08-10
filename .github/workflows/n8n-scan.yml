@@ -1,18 +1,30 @@
 name: n8n Community Node Scan
+permissions: {}
 
 on:
   workflow_dispatch:
 
 jobs:
   scan:
+    name: Scan package with n8n community package scan
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v6
+    permissions:
+      contents: read # To read files in the repository.
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
 
       - name: Run n8n community package scan
         run: npx @n8n/scan-community-package '@mercadopago/n8n-nodes-mercadopago'
+
+concurrency:
+  group: n8n-scan
+  cancel-in-progress: true
