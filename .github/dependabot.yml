@@ -27,12 +27,6 @@ updates:
       - "samhermeli"
       - "Harievilozanini"
 
-    # 🏷️ Labels automáticos para organizar PRs
-    # Razón: Facilita filtrar y priorizar en GitHub
-    labels:
-      - "dependencies"
-      - "automated"
-
     # 🎯 Estrategia de versionado
     # Razón: 'increase' actualiza al mínimo necesario (más seguro)
     # Opciones: auto, increase, increase-if-necessary, lockfile-only, widen
@@ -90,11 +84,6 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "02:00"
-
-    labels:
-      - "dependencies"
-      - "github-actions"
-      - "automated"
 
     commit-message:
       prefix: "⬆️"
