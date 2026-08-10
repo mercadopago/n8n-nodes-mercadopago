@@ -27,12 +27,6 @@ updates:
     # Razón: Evita saturar el repositorio con demasiados PRs
     open-pull-requests-limit: 5
 
-    # 👥 Reviewers automáticos (de CODEOWNERS)
-    # Razón: Los code owners deben revisar cambios de seguridad
-    reviewers:
-      - "samhermeli"
-      - "Harievilozanini"
-
     # 🎯 Estrategia de versionado
     # Razón: 'increase' actualiza al mínimo necesario (más seguro)
     # Opciones: auto, increase, increase-if-necessary, lockfile-only, widen
@@ -104,9 +98,6 @@ updates:
       github-actions-all:
         patterns:
           - "*"
-
-    reviewers:
-      - "samhermeli"
 
 # 📚 Notas:
 # 1. Dependabot creará PRs automáticamente cuando detecte actualizaciones
