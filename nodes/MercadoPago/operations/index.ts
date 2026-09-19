@@ -1,5 +1,6 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
 import createPaymentLink from './createPaymentLink';
+import createPixOrder from './createPixOrder';
 import listReleaseReports from './listReleaseReports';
 import configureReleaseReport from './configureReleaseReport';
 import getReleaseReportConfig from './getReleaseReportConfig';
@@ -65,6 +66,7 @@ export type OperationHandler = (ctx: HandlerCtx) => Promise<unknown>;
  */
 export const operations = {
 	createPaymentLink,
+	createPixOrder,
 	getManyReleaseReports: listReleaseReports,
 	createOrUpdateReleaseReportConfig: configureReleaseReport,
 	getReleaseReportConfig,

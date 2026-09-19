@@ -21,7 +21,7 @@ Connect your workflows to Mercado Pago — create payment links, configure autom
 
 | Resource | What you get |
 |----------|-------------|
-| 💳 **Payments** | Create Checkout Preference links with items, back URLs, expiration dates and more |
+| 💳 **Payments** | Create Checkout Preference links or automatic Pix orders with QR Code data |
 | 📊 **Reporting** | Configure, list and download Release & Settlement reports |
 
 ---
@@ -33,6 +33,7 @@ Connect your workflows to Mercado Pago — create payment links, configure autom
 | Operation | Method | Description |
 |-----------|--------|-------------|
 | **Create Payment Link** | `POST` | Generate a Checkout Preference link to accept payments |
+| **Create Pix Order** | `POST` | Create and process an idempotent Pix payment through Orders API |
 
 ### 📊 Reporting — Release Reports
 
@@ -81,6 +82,10 @@ Trigger → MercadoPago (Create Payment Link) → Send email with payment URL
 ```
 
 ```
+Webhook → MercadoPago (Create Pix Order) → Return QR Code and Pix copy-and-paste data
+```
+
+```
 Schedule → MercadoPago (List Release Reports) → Filter → Save to Google Sheets
 ```
 
@@ -104,6 +109,25 @@ Creates a [Checkout Preference](https://www.mercadopago.com.br/developers/en/ref
 - `expiration_date_from` / `expiration_date_to` — limit when the link is valid
 - `statement_descriptor` — text on the buyer's bank statement (max 13 chars)
 - `binary_mode` — only approved/rejected (no pending)
+
+</details>
+
+<details>
+<summary><strong>💠 Create Pix Order</strong></summary>
+
+Creates and automatically processes a Pix payment through the recommended
+[Checkout API Orders](https://www.mercadopago.com.br/developers/en/docs/checkout-api-orders/payment-integration/pix).
+
+**Required:**
+- `total_amount` — amount charged by the order and its Pix transaction
+- `payer_email` — payer email address
+- `external_reference` — unique reference used for reconciliation
+- `idempotency_key` — unique key that makes retries safe and prevents duplicates
+
+**Optional:**
+- `expiration_time` — from 30 minutes to 30 days; defaults to 24 hours
+- `simplify` — returns order status, payment status, `ticket_url`, `qr_code`, and
+  `qr_code_base64`; disable it to receive the raw API response
 
 </details>
 
@@ -186,6 +210,7 @@ nodes/MercadoPago/
     index.ts                       ← Handler registry + shared types (HandlerCtx)
     utils.ts                       ← Shared parsing helpers
     createPaymentLink.ts
+    createPixOrder.ts
     listReleaseReports.ts
     configureReleaseReport.ts      ← Upsert: POST → fallback PUT on 409
     getReleaseReportConfig.ts
