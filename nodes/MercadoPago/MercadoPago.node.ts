@@ -49,7 +49,7 @@ async function fetchReportFiles(
  * n8n node: MercadoPago
  *
  * Exposes a set of operations grouped under two resources:
- * - `payments`: Create payment link (Checkout Preference).
+ * - `payments`: Create payment links and Pix orders.
  * - `reporting`: List, configure and download Release/Settlement reports.
  *
  * This class wires node UI properties to concrete operation handlers in
@@ -113,6 +113,7 @@ export class MercadoPago implements INodeType {
 				displayOptions: { show: { resource: ['payments'] } },
 				options: [
 					{ name: 'Create Payment Link', value: 'createPaymentLink', description: 'Create a payment link (preference)' },
+					{ name: 'Create Pix Order', value: 'createPixOrder', description: 'Create and process a Pix payment through Checkout API Orders' },
 				],
 				default: 'createPaymentLink',
 				noDataExpression: true,
@@ -135,6 +136,72 @@ export class MercadoPago implements INodeType {
 				],
 				default: 'getManyReleaseReports',
 				noDataExpression: true,
+			},
+
+			// ---- createPixOrder properties ----
+			{
+				displayName: 'Total Amount',
+				name: 'total_amount',
+				type: 'number',
+				typeOptions: { minValue: 0.01, numberPrecision: 2 },
+				default: 1,
+				required: true,
+				displayOptions: { show: { resource: ['payments'], operation: ['createPixOrder'] } },
+				description: 'Total amount to charge. The Pix transaction uses the same value.',
+			},
+			{
+				displayName: 'Payer Email',
+				name: 'payer_email',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. buyer@example.com',
+				required: true,
+				displayOptions: { show: { resource: ['payments'], operation: ['createPixOrder'] } },
+				description: 'Email address associated with the Pix payer',
+			},
+			{
+				displayName: 'External Reference',
+				name: 'external_reference',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. order-12345',
+				required: true,
+				displayOptions: { show: { resource: ['payments'], operation: ['createPixOrder'] } },
+				description: 'Unique reference used to reconcile the order in your system',
+			},
+			{
+				displayName: 'Idempotency Key',
+				name: 'idempotency_key',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. 255c9866-ea68-42f8-9f02-493cd6cdd159',
+				required: true,
+				displayOptions: { show: { resource: ['payments'], operation: ['createPixOrder'] } },
+				description: 'Unique key that makes retries safe and prevents duplicate Pix charges',
+			},
+			{
+				displayName: 'Expiration Time',
+				name: 'expiration_time',
+				type: 'options',
+				options: [
+					{ name: '30 Minutes', value: 'PT30M' },
+					{ name: '1 Hour', value: 'PT1H' },
+					{ name: '6 Hours', value: 'PT6H' },
+					{ name: '24 Hours', value: 'PT24H' },
+					{ name: '7 Days', value: 'P7D' },
+					{ name: '30 Days', value: 'P30D' },
+				],
+				default: 'PT24H',
+				displayOptions: { show: { resource: ['payments'], operation: ['createPixOrder'] } },
+				description: 'How long the Pix payment remains available',
+			},
+			{
+				displayName: 'Simplify',
+				name: 'simplify',
+				type: 'boolean',
+				default: true,
+				displayOptions: { show: { resource: ['payments'], operation: ['createPixOrder'] } },
+				description: 'Whether to return the order status and Pix payment fields instead of the raw response',
 			},
 
 			// ---- createPaymentLink properties ----

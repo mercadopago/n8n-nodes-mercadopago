@@ -24,6 +24,9 @@ export const API_ENDPOINTS = {
   // Checkout Preferences
   CHECKOUT_PREFERENCES: `${API_BASE_URL}/checkout/preferences`,
 
+  // Checkout API Orders
+  ORDERS: `${API_BASE_URL}/v1/orders`,
+
   // Release Report
   RELEASE_REPORT_LIST: `${API_BASE_URL}/v1/account/release_report/list`,
   RELEASE_REPORT_CONFIG: `${API_BASE_URL}/v1/account/release_report/config`,
